@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OxySense — Smart Oxygen Cylinder Monitoring Dashboard</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="theme-light">
+  <div class="app-container">
+    
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <!-- SIDEBAR NAVIGATION -->
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo">
+          <div class="logo-icon-wrap">
+            <i data-lucide="activity" class="icon-brand"></i>
+          </div>
+          <div class="brand-text">
+            <h2>OxySense</h2>
+            <span>IoT Healthcare</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <span class="nav-section-label">MONITORING</span>
+        <button class="nav-item active" data-view="view-overview">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Overview</span>
+        </button>
+        <button class="nav-item" data-view="view-live">
+          <i data-lucide="radio"></i>
+          <span>Live Monitoring</span>
+          <span class="pulse-indicator"></span>
+        </button>
+        <button class="nav-item" data-view="view-cylinders">
+          <i data-lucide="cylinder"></i>
+          <span>Cylinder Fleet</span>
+          <span class="badge-count" id="nav-cylinder-count">6</span>
+        </button>
+
+        <span class="nav-section-label">CLINICAL OPS</span>
+        <button class="nav-item" data-view="view-alerts">
+          <i data-lucide="bell"></i>
+          <span>Alerts &amp; Notices</span>
+          <span class="badge-count badge-alert" id="nav-alert-count">0</span>
+        </button>
+        <button class="nav-item" data-view="view-ai">
+          <i data-lucide="sparkles"></i>
+          <span>AI Insights</span>
+          <span class="badge-pill-ai">Smart</span>
+        </button>
+        <button class="nav-item" data-view="view-history">
+          <i data-lucide="file-text"></i>
+          <span>Historical Reports</span>
+        </button>
+
+        <span class="nav-section-label">SYSTEM</span>
+        <button class="nav-item" data-view="view-settings">
+          <i data-lucide="settings"></i>
+          <span>System Settings</span>
+        </button>
+      </nav>
+
+      <!-- Sidebar Simulation Info Pill -->
+      <div class="sidebar-footer">
+        <div class="sim-status-card">
+          <div class="sim-header">
+            <span class="pulse-dot-green"></span>
+            <span class="sim-title">Virtual ESP32 Node</span>
+          </div>
+          <p class="sim-desc">Software simulation layer active. No physical sensors bound.</p>
+          <div class="sim-node-id">Node: ESP32-ICU-04</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <!-- MAIN CONTENT WRAPPER -->
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <div class="main-wrapper">
+      
+      <!-- TOP HEADER BAR -->
+      <header class="top-header">
+        <div class="header-left">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation menu">
+            <i data-lucide="menu"></i>
+          </button>
+          <div class="header-title-group">
+            <h1>OxySense</h1>
+            <span class="header-subtitle">Smart Oxygen Cylinder Monitoring &amp; AI Recommendation System</span>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- Connection Status Pill -->
+          <div class="status-pill online" id="esp32-status-pill">
+            <span class="status-dot"></span>
+            <span id="esp32-status-text">ESP32 Connected (Simulated)</span>
+          </div>
+
+          <!-- Demo Mode Badge -->
+          <div class="demo-badge">
+            <i data-lucide="flask-conical" class="icon-sm"></i>
+            <span>DEMO MODE</span>
+          </div>
+
+          <!-- Last Updated Clock -->
+          <div class="clock-display">
+            <i data-lucide="clock" class="icon-sm"></i>
+            <span id="live-clock">--:--:--</span>
+          </div>
+
+          <!-- Notification Bell -->
+          <div class="notification-wrap" id="header-notif-btn">
+            <button class="icon-btn" title="View Notifications" aria-label="View active notifications">
+              <i data-lucide="bell"></i>
+              <span class="notif-badge" id="header-notif-badge">0</span>
+            </button>
+          </div>
+
+          <!-- User Profile -->
+          <div class="user-profile">
+            <div class="avatar">DS</div>
+            <div class="user-meta">
+              <span class="user-name">Dr. Sharma</span>
+              <span class="user-role">ICU Ward Incharge</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- SIMULATION CONTROLS BAR (Always Accessible) -->
+      <section class="simulation-banner">
+        <div class="sim-bar-content">
+          <div class="sim-label-wrap">
+            <i data-lucide="sliders" class="sim-slider-icon"></i>
+            <div>
+              <strong>Demonstration Control Panel</strong>
+              <span>Trigger realistic clinical conditions without hardware</span>
+            </div>
+          </div>
+          <div class="sim-buttons">
+            <button class="btn btn-warning-soft" id="btn-sim-low">
+              <i data-lucide="alert-triangle"></i> Simulate Low Supply
+            </button>
+            <button class="btn btn-danger-soft" id="btn-sim-disconnect">
+              <i data-lucide="wifi-off"></i> Simulate Sensor Fault
+            </button>
+            <button class="btn btn-primary-soft" id="btn-sim-reset">
+              <i data-lucide="rotate-ccw"></i> Reset to Normal
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- VIEW 1: OVERVIEW -->
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <main class="page-view active" id="view-overview">
+        <!-- 4 Primary Metric Cards -->
+        <div class="metrics-grid">
+          
+          <!-- Card A: Cylinder Pressure -->
+          <div class="card metric-card">
+            <div class="card-header-compact">
+              <span class="card-label">CYLINDER PRESSURE</span>
+              <div class="icon-wrap cyan">
+                <i data-lucide="gauge"></i>
+              </div>
+            </div>
+            <div class="metric-body">
+              <div class="metric-val-wrap">
+                <span class="metric-value" id="val-pressure-primary">--</span>
+                <span class="metric-unit" id="unit-pressure-primary">PSI</span>
+              </div>
+              <div class="metric-sub-val" id="val-pressure-secondary">-- bar equivalent</div>
+              
+              <!-- Circular Arc / Progress bar -->
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="pressure-progress" style="width: 75%;"></div>
+              </div>
+
+              <div class="metric-footer">
+                <span class="trend-indicator text-success" id="pressure-trend">
+                  <i data-lucide="trending-down"></i> Gradual Consumption
+                </span>
+                <span class="ref-label">Full: 2900 PSI (200 bar)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card B: Oxygen Flow Rate -->
+          <div class="card metric-card">
+            <div class="card-header-compact">
+              <span class="card-label">OXYGEN FLOW RATE</span>
+              <div class="icon-wrap teal">
+                <i data-lucide="wind"></i>
+              </div>
+            </div>
+            <div class="metric-body">
+              <div class="metric-val-wrap">
+                <span class="metric-value" id="val-flow-primary">--</span>
+                <span class="metric-unit">L/min</span>
+              </div>
+              <div class="metric-sub-val" id="val-flow-prescribed">Prescribed: 2.0 L/min</div>
+              
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill fill-teal" id="flow-progress" style="width: 30%;"></div>
+              </div>
+
+              <div class="metric-footer">
+                <span class="badge-tag" id="flow-tag">Simulated Flow</span>
+                <span class="ref-label" id="flow-diff-label">±0.0 deviation</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card C: Estimated Time to Empty -->
+          <div class="card metric-card">
+            <div class="card-header-compact">
+              <span class="card-label">ESTIMATED TIME TO EMPTY</span>
+              <div class="icon-wrap orange">
+                <i data-lucide="hourglass"></i>
+              </div>
+            </div>
+            <div class="metric-body">
+              <div class="metric-val-wrap">
+                <span class="metric-value" id="val-ete-primary">--</span>
+              </div>
+              <div class="metric-sub-val" id="val-ete-litres">Usable Volume: ~495 L</div>
+              
+              <div class="ete-disclaimer-box">
+                <i data-lucide="info" class="icon-xs"></i>
+                <span>Demonstration linear estimate. Not clinically calibrated.</span>
+              </div>
+
+              <div class="metric-footer">
+                <span class="ref-label" id="ete-capacity-label">Type E Cylinder (660 L)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card D: Cylinder Status -->
+          <div class="card metric-card">
+            <div class="card-header-compact">
+              <span class="card-label">OVERALL CYLINDER STATUS</span>
+              <div class="icon-wrap green" id="status-icon-wrap">
+                <i data-lucide="shield-check" id="status-icon"></i>
+              </div>
+            </div>
+            <div class="metric-body">
+              <div class="status-badge-display">
+                <span class="status-pill-large badge-normal" id="val-status-badge">Normal Operation</span>
+              </div>
+              <p class="status-caption" id="val-status-desc">All telemetry parameters within normal operational envelope.</p>
+              
+              <div class="metric-footer">
+                <span class="ref-label">Assigned: ICU — Bed 04</span>
+                <span class="ref-label" id="val-active-alerts-tag">0 Active Alerts</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-grid-two">
+          <div class="card chart-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>Cylinder Pressure Telemetry</h3>
+                <span class="card-subtitle">Real-time pressure decay curve (PSI / Bar)</span>
+              </div>
+              <div class="chart-actions">
+                <div class="btn-group-pill">
+                  <button class="btn-pill active" data-range="15m">15m</button>
+                  <button class="btn-pill" data-range="1h">1h</button>
+                  <button class="btn-pill" data-range="24h">24h</button>
+                </div>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="chart-pressure"></canvas>
+            </div>
+          </div>
+
+          <div class="card chart-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>Flow Rate &amp; Supply Depletion</h3>
+                <span class="card-subtitle">Flow variance (L/min) &amp; calculated percentage</span>
+              </div>
+              <div class="chart-actions">
+                <span class="live-dot-pulse">● Live Stream</span>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="chart-flow"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Split: AI Quick Insights & Active Fleet -->
+        <div class="bottom-split-grid">
+          <!-- AI Quick Insights -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3><i data-lucide="sparkles" class="icon-inline icon-teal"></i> Clinical Logistics AI Summary</h3>
+                <span class="card-subtitle">Operational recommendation engine</span>
+              </div>
+              <span class="badge-tag-ai" id="ai-engine-tag">Rule Engine</span>
+            </div>
+            <div class="ai-overview-body">
+              <div class="ai-summary-callout" id="ai-overview-summary">
+                Monitoring active. All telemetry nominal for assigned patient bed.
+              </div>
+              <div class="ai-action-list" id="ai-overview-actions">
+                <!-- Populated via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Ward Cylinders Preview -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3>Hospital Oxygen Fleet Status</h3>
+                <span class="card-subtitle">Monitored wards and current reserves</span>
+              </div>
+              <button class="btn btn-outline-sm" id="btn-view-all-cylinders">View Fleet &rarr;</button>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table" id="table-overview-cylinders">
+                <thead>
+                  <tr>
+                    <th>Cylinder ID</th>
+                    <th>Ward / Location</th>
+                    <th>Pressure</th>
+                    <th>ETE</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-overview-cylinders">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- VIEW 2: LIVE MONITORING -->
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <main class="page-view" id="view-live">
+        <div class="view-header-bar">
+          <div>
+            <h2>Real-Time Telemetry Center</h2>
+            <p class="text-muted">High-frequency simulated data stream from virtual ESP32 sensor collar.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-primary" id="btn-toggle-stream">
+              <i data-lucide="pause"></i> Pause Stream
+            </button>
+          </div>
+        </div>
+
+        <!-- Node Diagnostics Row -->
+        <div class="node-diag-grid">
+          <div class="diag-card">
+            <span class="diag-label">MICROCONTROLLER</span>
+            <div class="diag-val">ESP32-WROOM-32D</div>
+            <span class="diag-status text-success">● Connected (Simulated)</span>
+          </div>
+          <div class="diag-card">
+            <span class="diag-label">PRESSURE SENSOR</span>
+            <div class="diag-val">MPX5700DP Transducer</div>
+            <span class="diag-status text-success">● Calibrated 0–250 Bar</span>
+          </div>
+          <div class="diag-card">
+            <span class="diag-label">FLOW SENSOR</span>
+            <div class="diag-val">AWM720P1 Mass Flow</div>
+            <span class="diag-status text-success">● 0–20 L/min Optical</span>
+          </div>
+          <div class="diag-card">
+            <span class="diag-label">TELEMETRY MQTT TOPIC</span>
+            <div class="diag-val font-mono">oxysense/icu-04/telemetry</div>
+            <span class="diag-status text-muted">QoS 1 · 2s Keep-Alive</span>
+          </div>
+        </div>
+
+        <!-- Full Width Telemetry Graph -->
+        <div class="card chart-card mt-4">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h3>High-Resolution Telemetry Waveform</h3>
+              <span class="card-subtitle">Real-time synchronized Pressure (PSI) &amp; Flow (L/min)</span>
+            </div>
+          </div>
+          <div class="chart-container large">
+            <canvas id="chart-live-full"></canvas>
+          </div>
+        </div>
+      </main>
+
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- VIEW 3: CYLINDER MANAGEMENT -->
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <main class="page-view" id="view-cylinders">
+        <div class="view-header-bar">
+          <div>
+            <h2>Hospital Cylinder Fleet Registry</h2>
+            <p class="text-muted">Track oxygen inventory across ICU, Emergency, and Inpatient wards.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <!-- Filters & Search Toolbar -->
+          <div class="table-toolbar">
+            <div class="search-wrap">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="input-cylinder-search" placeholder="Search by Cylinder ID, Ward, or Patient ref...">
+            </div>
+            <div class="filter-group">
+              <label>Status Filter:</label>
+              <select id="select-cylinder-status" class="form-select">
+                <option value="ALL">All Statuses</option>
+                <option value="NORMAL">Normal</option>
+                <option value="LOW_PRESSURE">Low Pressure</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="SENSOR_DISCONNECTED">Disconnected</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Main Cylinders Table -->
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Cylinder ID</th>
+                  <th>Ward / Location</th>
+                  <th>Capacity / Type</th>
+                  <th>Pressure (PSI / Bar)</th>
+                  <th>Flow</th>
+                  <th>Est. Time Remaining</th>
+                  <th>Status</th>
+                  <th>Telemetry Node</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-fleet-cylinders">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- VIEW 4: ALERTS & NOTIFICATIONS -->
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <main class="page-view" id="view-alerts">
+        <div class="view-header-bar">
+          <div>
+            <h2>Alerts &amp; Clinical Notifications</h2>
+            <p class="text-muted">Active alarms and historical warning logs.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-outline-sm" id="btn-refresh-alerts">
+              <i data-lucide="refresh-cw"></i> Refresh
+            </button>
+          </div>
+        </div>
+
+        <div class="alerts-layout">
+          <!-- Active Alerts Column -->
+          <div class="alerts-main-col">
+            <div class="card">
+              <div class="card-header">
+                <h3>Active Unacknowledged Alerts</h3>
+                <span class="badge-count badge-alert" id="active-alert-counter">0 Active</span>
+              </div>
+              <div class="alerts-list" id="active-alerts-container">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- Historical Alert Log -->
+            <div class="card mt-4">
+              <div class="card-header">
+                <h3>Acknowledged &amp; Resolved Log</h3>
+              </div>
+              <div class="alerts-list" id="historical-alerts-container">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Threshold Reference Guide -->
+          <div class="alerts-side-col">
+            <div class="card">
+              <div class="card-header">
+                <h3>Threshold Logic</h3>
+              </div>
+              <div class="rule-ref-box">
+                <div class="rule-ref-item">
+                  <span class="status-dot-static green"></span>
+                  <div>
+                    <strong>Normal Operation (&gt;50 bar)</strong>
+                    <p>Pressure is sufficient for continuous therapy.</p>
+                  </div>
+                </div>
+                <div class="rule-ref-item">
+                  <span class="status-dot-static yellow"></span>
+                  <div>
+                    <strong>Low Supply Warning (&le;50 bar / 725 PSI)</strong>
+                    <p>Triggers replacement order protocol for ward staff.</p>
+                  </div>
+                </div>
+                <div class="rule-ref-item">
+                  <span class="status-dot-static red"></span>
+                  <div>
+                    <strong>Critical Depletion (&le;20 bar / 290 PSI)</strong>
+                    <p>Urgent clinical alert. Reserve under 30 minutes.</p>
+                  </div>
+                </div>
+                <div class="rule-ref-item">
+                  <span class="status-dot-static gray"></span>
+                  <div>
+                    <strong>Sensor Disconnection</strong>
+                    <p>ESP32 telemetry interrupted or transducer fault.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- VIEW 5: AI INSIGHTS -->
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <main class="page-view" id="view-ai">
+        <div class="view-header-bar">
+          <div>
+            <h2>Clinical AI Recommendation Engine</h2>
+            <p class="text-muted">Personalized operational logistics and preventive safety insights.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-primary" id="btn-refresh-ai">
+              <i data-lucide="sparkles"></i> Re-Analyze Telemetry
+            </button>
+          </div>
+        </div>
+
+        <div class="ai-view-grid">
+          <!-- Left: AI Executive Analysis -->
+          <div class="card ai-card-main">
+            <div class="card-header">
+              <div class="ai-badge-row">
+                <div class="ai-brand-pill">
+                  <i data-lucide="cpu" class="icon-inline"></i>
+                  <span id="ai-engine-full-name">Rule-Based Clinical Expert Engine</span>
+                </div>
+                <span class="timestamp-pill" id="ai-timestamp">Last analyzed: Just now</span>
+              </div>
+            </div>
+            
+            <div class="ai-analysis-content">
+              <h4>System Operational Summary</h4>
+              <p class="ai-summary-text" id="ai-main-summary">Loading system evaluation...</p>
+
+              <h4 class="mt-4">Detected Monitoring Conditions</h4>
+              <ul class="condition-list" id="ai-conditions-list">
+                <!-- Dynamically populated -->
+              </ul>
+
+              <h4 class="mt-4">Suggested Operational Follow-Up</h4>
+              <div class="actions-container" id="ai-actions-container">
+                <!-- Dynamically populated -->
+              </div>
+
+              <h4 class="mt-4">Underlying Diagnostic Trigger Rules</h4>
+              <div class="trigger-rules-box" id="ai-triggers-box">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <div class="ai-disclaimer-box">
+              <i data-lucide="alert-octagon" class="icon-disclaimer"></i>
+              <div>
+                <strong>Clinical Safety Constraint:</strong>
+                <span>OxySense AI is an operational logistics support tool. It does not independently prescribe flow changes, modify dosages, or formulate medical diagnoses. All clinical adjustments must be made by licensed medical doctors and nurses.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Groq & Architecture Config -->
+          <div class="ai-side-col">
+            <div class="card">
+              <div class="card-header">
+                <h3>LLM Cloud Integration</h3>
+              </div>
+              <div class="groq-status-box">
+                <p>To enable Groq cloud LLM models (e.g. Llama-3.3-70B), add your API key to <code>.env</code>:</p>
+                <pre class="code-block">GROQ_API_KEY=gsk_your_key_here</pre>
+                <p class="text-muted mt-2">When no key is configured, OxySense runs offline deterministic clinical rules.</p>
+              </div>
+            </div>
+
+            <div class="card mt-4">
+              <div class="card-header">
+                <h3>Pipeline Architecture</h3>
+              </div>
+              <div class="arch-flow">
+                <div class="flow-step">1. Simulated / ESP32 Sensors</div>
+                <div class="flow-arrow">&darr;</div>
+                <div class="flow-step">2. Python Flask Telemetry Ingestion</div>
+                <div class="flow-arrow">&darr;</div>
+                <div class="flow-step">3. ETE &amp; Alert Decision Classifier</div>
+                <div class="flow-arrow">&darr;</div>
+                <div class="flow-step">4. Rule Engine / Groq Llama-3.3</div>
+                <div class="flow-arrow">&darr;</div>
+                <div class="flow-step">5. OxySense Web Dashboard</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- VIEW 6: HISTORICAL REPORTS -->
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <main class="page-view" id="view-history">
+        <div class="view-header-bar">
+          <div>
+            <h2>Historical Telemetry Reports &amp; Auditing</h2>
+            <p class="text-muted">Export verified logs and examine consumption patterns.</p>
+          </div>
+          <div class="header-actions">
+            <a href="/api/export-csv" class="btn btn-primary" id="btn-export-csv" download>
+              <i data-lucide="download"></i> Export CSV Report
+            </a>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>Recent Reading Logs</h3>
+            <span class="badge-tag">Synthetic Demo Logs</span>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="table-history-logs">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Pressure (Bar)</th>
+                  <th>Pressure (PSI)</th>
+                  <th>Flow (L/min)</th>
+                  <th>Remaining %</th>
+                  <th>Calculated ETE</th>
+                  <th>Status</th>
+                  <th>Verification</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-history-logs">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- VIEW 7: SYSTEM SETTINGS -->
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <main class="page-view" id="view-settings">
+        <div class="view-header-bar">
+          <div>
+            <h2>System &amp; Demonstration Settings</h2>
+            <p class="text-muted">Configure operational thresholds, cylinder geometry, and unit preferences.</p>
+          </div>
+        </div>
+
+        <div class="settings-grid">
+          <div class="card">
+            <div class="card-header">
+              <h3>Threshold &amp; Clinical Parameters</h3>
+            </div>
+            <form id="form-settings" class="settings-form">
+              <div class="form-group">
+                <label for="setting-warning">Warning Threshold (Bar)</label>
+                <input type="number" id="setting-warning" class="form-control" value="50" min="10" max="150">
+                <small class="form-hint">Triggers Low Supply alert (~725 PSI).</small>
+              </div>
+
+              <div class="form-group">
+                <label for="setting-critical">Critical Threshold (Bar)</label>
+                <input type="number" id="setting-critical" class="form-control" value="20" min="5" max="50">
+                <small class="form-hint">Triggers Urgent Red Alert (~290 PSI).</small>
+              </div>
+
+              <div class="form-group">
+                <label for="setting-prescribed">Prescribed Reference Flow (L/min)</label>
+                <input type="number" id="setting-prescribed" class="form-control" value="2.0" step="0.5" min="0.5" max="15">
+                <small class="form-hint">Standard baseline clinical order for deviation alerts.</small>
+              </div>
+
+              <div class="form-group">
+                <label for="setting-capacity">Cylinder Capacity Preset</label>
+                <select id="setting-capacity" class="form-select">
+                  <option value="415">Type D Cylinder (415 Litres)</option>
+                  <option value="660" selected>Type E Cylinder (660 Litres — Standard)</option>
+                  <option value="3450">Type M Cylinder (3450 Litres — High Capacity)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="setting-unit">Preferred Pressure Display Unit</label>
+                <select id="setting-unit" class="form-select">
+                  <option value="PSI" selected>PSI (Pounds per Square Inch)</option>
+                  <option value="BAR">Bar (Metric Atmosphere)</option>
+                </select>
+              </div>
+
+              <button type="submit" class="btn btn-primary mt-3">
+                <i data-lucide="save"></i> Save Settings
+              </button>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>Hardware Layer Integration (Future)</h3>
+            </div>
+            <div class="settings-doc">
+              <p>OxySense includes a built-in hardware abstraction layer. When your ESP32 microcontroller is ready:</p>
+              <ol class="setup-list">
+                <li>Configure the ESP32 to connect to hospital Wi-Fi.</li>
+                <li>Flash the firmware to send HTTP POST to: <br><code>http://&lt;server-ip&gt;:5000/api/telemetry</code></li>
+                <li>Send JSON payload with <code>pressure_bar</code> and <code>flow_lpm</code>.</li>
+                <li>The dashboard will automatically switch from <strong>DEMO MODE</strong> to <strong>LIVE HARDWARE</strong>.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- CYLINDER DETAIL MODAL -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" id="cylinder-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-cylinder-id">Cylinder Details</h3>
+        <button class="modal-close-btn" id="modal-close" aria-label="Close dialog">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-content">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Application Scripts -->
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/charts.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

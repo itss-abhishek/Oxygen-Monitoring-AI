@@ -94,3 +94,41 @@ def test_api_export_csv(client):
     assert res.status_code == 200
     assert "text/csv" in res.content_type
     assert b"ISO Timestamp" in res.data
+
+def test_auth_login_success(client):
+    res = client.post("/api/auth/login", json={"email": "doctor@oxysense.med", "password": "doctor123"})
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+    assert data["user"]["name"] == "Dr. Sharma"
+
+def test_auth_login_failure(client):
+    res = client.post("/api/auth/login", json={"email": "wrong@oxysense.med", "password": "wrong"})
+    assert res.status_code == 401
+    data = res.get_json()
+    assert data["success"] is False
+    assert "Invalid email or password" in data["error"]
+
+def test_auth_session(client):
+    # Unauthenticated session check
+    res = client.get("/api/auth/session")
+    assert res.status_code == 200
+    assert res.get_json()["authenticated"] is False
+
+    # Authenticate and check session
+    client.post("/api/auth/login", json={"email": "nurse@oxysense.med", "password": "nurse123"})
+    res2 = client.get("/api/auth/session")
+    assert res2.status_code == 200
+    assert res2.get_json()["authenticated"] is True
+    assert res2.get_json()["user"]["role"] == "Senior Respiratory Nurse"
+
+def test_auth_logout(client):
+    client.post("/api/auth/login", json={"email": "admin@oxysense.med", "password": "admin123"})
+    res = client.post("/api/auth/logout")
+    assert res.status_code == 200
+    assert res.get_json()["success"] is True
+
+    # Check session is cleared
+    res2 = client.get("/api/auth/session")
+    assert res2.get_json()["authenticated"] is False
+

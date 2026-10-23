@@ -5,7 +5,7 @@ backend/app.py — Flask REST API Server for OxySense Web Dashboard.
 import os
 import io
 import csv
-from flask import Flask, jsonify, request, render_template, Response, send_file
+from flask import Flask, jsonify, request, render_template, Response, send_file, session
 from backend.simulation_engine import telemetry_instance, generate_ai_insights
 from backend.mock_data import MOCK_CYLINDERS
 
@@ -14,6 +14,29 @@ app = Flask(
     template_folder=os.path.join(os.path.dirname(__file__), "..", "templates"),
     static_folder=os.path.join(os.path.dirname(__file__), "..", "static")
 )
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "oxysense-demo-secret-key-2026")
+
+# Demo user credentials for presentation
+DEMO_USERS = {
+    "doctor@oxysense.med": {
+        "password": "doctor123",
+        "name": "Dr. Sharma",
+        "role": "ICU Ward Incharge",
+        "department": "Critical Care Unit"
+    },
+    "admin@oxysense.med": {
+        "password": "admin123",
+        "name": "Administrator",
+        "role": "Hospital Biomedical Admin",
+        "department": "Biomedical Engineering"
+    },
+    "nurse@oxysense.med": {
+        "password": "nurse123",
+        "name": "Nurse Priya",
+        "role": "Senior Respiratory Nurse",
+        "department": "General Ward 2"
+    }
+}
 
 # ---------------------------------------------------------------------------
 # Page Route
@@ -22,6 +45,53 @@ app = Flask(
 @app.route("/")
 def index():
     return render_template("index.html")
+
+# ---------------------------------------------------------------------------
+# Authentication Endpoints (Demo Mode)
+# ---------------------------------------------------------------------------
+
+@app.route("/api/auth/login", methods=["POST"])
+def auth_login():
+    """Authenticate against demo accounts."""
+    data = request.get_json() or {}
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+
+    # Also allow logging in with username before @
+    matched_user = None
+    for user_email, user_info in DEMO_USERS.items():
+        if email == user_email or email == user_email.split("@")[0]:
+            if user_info["password"] == password:
+                matched_user = user_info
+                matched_user["email"] = user_email
+                break
+
+    if matched_user:
+        session["user"] = matched_user
+        return jsonify({
+            "success": True,
+            "message": "Authentication successful",
+            "user": matched_user
+        })
+
+    return jsonify({
+        "success": False,
+        "error": "Invalid email or password. Use demo credentials."
+    }), 401
+
+@app.route("/api/auth/logout", methods=["POST"])
+def auth_logout():
+    """Clear session on logout."""
+    session.pop("user", None)
+    return jsonify({"success": True, "message": "Logged out successfully"})
+
+@app.route("/api/auth/session", methods=["GET"])
+def auth_session():
+    """Check current session."""
+    user = session.get("user")
+    if user:
+        return jsonify({"authenticated": True, "user": user})
+    return jsonify({"authenticated": False, "user": None})
 
 # ---------------------------------------------------------------------------
 # API Endpoints

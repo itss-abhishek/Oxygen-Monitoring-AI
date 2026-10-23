@@ -16,6 +16,359 @@
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body class="theme-light">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 1. LOADING / SPLASH SCREEN -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div id="screen-splash" class="app-screen splash-screen active">
+    <div class="splash-card">
+      <div class="splash-logo-wrap">
+        <div class="splash-icon-pulse">
+          <i data-lucide="activity" class="splash-icon"></i>
+        </div>
+      </div>
+      <h1 class="splash-title">OxySense</h1>
+      <p class="splash-tagline">Smart Oxygen Monitoring</p>
+      <div class="splash-progress-track">
+        <div class="splash-progress-bar" id="splash-progress"></div>
+      </div>
+      <span class="splash-status-text" id="splash-status">Initializing telemetry environment...</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 2. HOME LANDING PAGE -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div id="screen-home" class="app-screen home-screen">
+    <!-- Sticky Home Navbar -->
+    <header class="home-navbar">
+      <div class="home-nav-container">
+        <a href="#screen-home" class="home-brand" id="brand-home-link">
+          <div class="logo-icon-wrap">
+            <i data-lucide="activity" class="icon-brand"></i>
+          </div>
+          <div class="brand-text">
+            <h2>OxySense</h2>
+            <span>IoT Healthcare</span>
+          </div>
+        </a>
+        <nav class="home-nav-links">
+          <a href="#screen-home" class="home-nav-link active">Home</a>
+          <a href="#home-features" class="home-nav-link">Features</a>
+          <a href="#home-how" class="home-nav-link">How It Works</a>
+          <a href="#home-preview" class="home-nav-link">Dashboard Preview</a>
+          <a href="#home-about" class="home-nav-link">About Project</a>
+        </nav>
+        <div class="home-nav-actions">
+          <button class="btn btn-primary" id="btn-nav-auth">
+            <i data-lucide="log-in"></i> <span id="nav-auth-text">Login</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="home-hero">
+      <div class="home-hero-container">
+        <div class="home-hero-text">
+          <div class="hero-badge-pill">
+            <span class="pulse-dot-green"></span>
+            <span>B.Tech Major Project · Software Simulation MVP</span>
+          </div>
+          <h1 class="home-hero-heading">Smarter Oxygen Monitoring.<br><span class="text-gradient">Better Visibility.</span></h1>
+          <p class="home-hero-desc">
+            An IoT-enabled oxygen cylinder monitoring system designed to track pressure, monitor gas flow, identify potential supply issues, and provide AI-assisted operational insights.
+          </p>
+          <div class="home-hero-ctas">
+            <button class="btn btn-primary btn-lg" id="btn-hero-dashboard">
+              <i data-lucide="layout-dashboard"></i> <span id="hero-cta-text">Explore Dashboard</span>
+            </button>
+            <a href="#home-features" class="btn btn-outline-light btn-lg" id="btn-hero-features">
+              <i data-lucide="arrow-down"></i> Explore Features
+            </a>
+          </div>
+          <div class="home-hero-trust">
+            <span>🩺 Multi-Ward Coverage</span>
+            <span>•</span>
+            <span>⏱️ ETE Prediction</span>
+            <span>•</span>
+            <span>🤖 AI Operational Insights</span>
+          </div>
+        </div>
+        <div class="home-hero-graphic">
+          <div class="hero-dashboard-preview-card">
+            <div class="preview-card-header">
+              <div class="preview-dots">
+                <span></span><span></span><span></span>
+              </div>
+              <span class="preview-title">OxySense Telemetry Node · ICU-04</span>
+              <span class="badge-tag">Demo Stream</span>
+            </div>
+            <div class="preview-metrics-row">
+              <div class="preview-metric">
+                <span class="preview-lbl">CYLINDER PRESSURE</span>
+                <div class="preview-val" id="home-preview-p">2148 <small>PSI</small></div>
+                <span class="preview-sub" id="home-preview-p-sub">148.1 bar · 74% Capacity</span>
+              </div>
+              <div class="preview-metric">
+                <span class="preview-lbl">OXYGEN FLOW RATE</span>
+                <div class="preview-val" id="home-preview-f">2.0 <small>L/min</small></div>
+                <span class="preview-sub">Prescribed: 2.0 L/min</span>
+              </div>
+            </div>
+            <div class="preview-chart-box">
+              <canvas id="chart-home-preview"></canvas>
+            </div>
+            <div class="preview-card-footer">
+              <span class="status-pill online"><span class="status-dot"></span> Virtual ESP32 Connected</span>
+              <span class="text-muted" style="font-size:0.75rem;">Simulated Real-Time Stream</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="home-section" id="home-features">
+      <div class="home-section-header">
+        <span class="section-tag">CORE CAPABILITIES</span>
+        <h2>Engineered for Healthcare Logistics</h2>
+        <p>Precision real-time telemetry, automated warnings, and operational intelligence.</p>
+      </div>
+      <div class="features-cards-grid">
+        <div class="feature-box">
+          <div class="feature-icon-box cyan">
+            <i data-lucide="cylinder"></i>
+          </div>
+          <h3>Multi-Cylinder Monitoring</h3>
+          <p>Continuous inventory visibility across Intensive Care Units, Emergency Bays, and General Wards with bed-level tracking.</p>
+        </div>
+        <div class="feature-box">
+          <div class="feature-icon-box teal">
+            <i data-lucide="gauge"></i>
+          </div>
+          <h3>Pressure &amp; Flow Tracking</h3>
+          <p>Real-time dual telemetry tracking Bourdon-equivalent pressure (PSI/bar) and mass flow rates (L/min) with decay modeling.</p>
+        </div>
+        <div class="feature-box">
+          <div class="feature-icon-box orange">
+            <i data-lucide="bell-ring"></i>
+          </div>
+          <h3>Smart Alerts &amp; Notifications</h3>
+          <p>Automated multi-tier alert engine classifying Normal, Low Supply (&le;50 bar), and Critical (&le;20 bar) depletion with acknowledgment logs.</p>
+        </div>
+        <div class="feature-box">
+          <div class="feature-icon-box green">
+            <i data-lucide="sparkles"></i>
+          </div>
+          <h3>AI-Assisted Insights</h3>
+          <p>Rule-based clinical logistics recommendations and optional Groq cloud LLM guidance for proactive replacement timing.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="home-section bg-subtle" id="home-how">
+      <div class="home-section-header">
+        <span class="section-tag">ARCHITECTURE &amp; WORKFLOW</span>
+        <h2>From Cylinder Collar to Clinical Decisions</h2>
+        <p>Clear separation between physical hardware architecture and software prototype simulation.</p>
+      </div>
+      <div class="workflow-steps-grid">
+        <div class="workflow-card">
+          <div class="step-num">01</div>
+          <h4>Sensors Layer</h4>
+          <span class="badge-status-planned">🔲 Planned Hardware</span>
+          <p>MPX5700DP pressure transducer and AWM720P1 mass flow sensor mounted directly on cylinder output valve.</p>
+        </div>
+        <div class="workflow-arrow">&rarr;</div>
+        <div class="workflow-card">
+          <div class="step-num">02</div>
+          <h4>ESP32 Node</h4>
+          <span class="badge-status-planned">🔲 Planned Hardware</span>
+          <p>ESP32 microcontroller telemetry collar sampling analog readings, Wi-Fi connectivity, and JSON payload transmission.</p>
+        </div>
+        <div class="workflow-arrow">&rarr;</div>
+        <div class="workflow-card active-card">
+          <div class="step-num">03</div>
+          <h4>OxySense Backend</h4>
+          <span class="badge-status-live">✅ Implemented Software</span>
+          <p>Python Flask REST API computing linear ETE, sensor validation, simulation scenarios, and fleet registry.</p>
+        </div>
+        <div class="workflow-arrow">&rarr;</div>
+        <div class="workflow-card active-card">
+          <div class="step-num">04</div>
+          <h4>Dashboard &amp; AI</h4>
+          <span class="badge-status-live">✅ Implemented Software</span>
+          <p>Responsive Chart.js visualization, multi-ward alert routing, and rule-based logistical recommendations.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dashboard Preview Section -->
+    <section class="home-section" id="home-preview">
+      <div class="home-section-header">
+        <span class="section-tag">LIVE DEMONSTRATION</span>
+        <h2>Complete Multi-Cylinder Dashboard</h2>
+        <p>Accessible upon signing in with student/faculty demo credentials.</p>
+      </div>
+      <div class="home-preview-wrapper">
+        <div class="preview-banner">
+          <div>
+            <h4>Experience the Full Clinical Console</h4>
+            <p>Access high-resolution waveforms, fleet filters, simulated faults, and CSV export.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-preview-launch">
+            <i data-lucide="arrow-right"></i> Launch Dashboard
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- About Project Section -->
+    <section class="home-section bg-subtle" id="home-about">
+      <div class="home-section-header">
+        <span class="section-tag">ACADEMIC BACKGROUND</span>
+        <h2>About This Project</h2>
+        <p>Personalized Healthcare Recommendation System: IoT-Enabled Smart Oxygen Cylinder Monitoring</p>
+      </div>
+      <div class="about-grid">
+        <div class="about-card">
+          <h4>🎓 Project Scope</h4>
+          <p>Developed as a final-year B.Tech Major Project to solve critical oxygen supply visibility challenges during patient transport, ICU surge demands, and ward management.</p>
+        </div>
+        <div class="about-card">
+          <h4>⚡ Technical Implementation</h4>
+          <p>Built with Python, Flask, vanilla JavaScript, Chart.js, and Lucide icons. Designed with a modular hardware abstraction layer ready for immediate ESP32 wiring.</p>
+        </div>
+        <div class="about-card">
+          <h4>⚠️ Clinical Disclaimer</h4>
+          <p>This software prototype is engineered strictly for academic demonstration. All telemetry is simulated. Clinical oxygen titration must only be administered by licensed medical practitioners.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Home Footer -->
+    <footer class="home-footer">
+      <div class="home-footer-container">
+        <div class="footer-brand-col">
+          <div class="brand-logo">
+            <div class="logo-icon-wrap">
+              <i data-lucide="activity" class="icon-brand"></i>
+            </div>
+            <div class="brand-text">
+              <h2>OxySense</h2>
+              <span>IoT Healthcare</span>
+            </div>
+          </div>
+          <p class="footer-desc">IoT-Enabled Smart Oxygen Cylinder Monitoring System with AI-Driven Personalized Healthcare Recommendations.</p>
+        </div>
+        <div class="footer-links-col">
+          <h5>Navigation</h5>
+          <a href="#screen-home">Home</a>
+          <a href="#home-features">Features</a>
+          <a href="#home-how">How It Works</a>
+          <a href="#home-about">About Project</a>
+        </div>
+        <div class="footer-auth-col">
+          <h5>Demonstration Access</h5>
+          <p class="text-muted" style="font-size:0.8rem;">Ready to evaluate the multi-cylinder console?</p>
+          <button class="btn btn-primary-soft btn-sm" id="btn-footer-login">
+            <i data-lucide="lock"></i> Staff Login
+          </button>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 OxySense. B.Tech Major Project · Academic Software Simulation MVP.</p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 3. LOGIN PAGE -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div id="screen-login" class="app-screen login-screen">
+    <div class="login-wrapper">
+      <div class="login-card">
+        <div class="login-card-header">
+          <button class="btn-back-link" id="btn-login-back">
+            <i data-lucide="arrow-left"></i> <span>Back to Home</span>
+          </button>
+          <div class="login-brand">
+            <div class="logo-icon-wrap">
+              <i data-lucide="activity" class="icon-brand"></i>
+            </div>
+            <h2>OxySense</h2>
+          </div>
+          <h3>Staff Authentication</h3>
+          <p class="login-sub">Sign in to access the multi-cylinder monitoring dashboard</p>
+        </div>
+
+        <!-- Error banner -->
+        <div class="login-error-banner" id="login-error-banner" style="display:none;">
+          <i data-lucide="alert-circle"></i>
+          <span id="login-error-text">Invalid email or password</span>
+        </div>
+
+        <form id="form-login" class="login-form">
+          <div class="form-group">
+            <label for="input-login-email">Email or Username</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="mail" class="input-icon"></i>
+              <input type="text" id="input-login-email" class="form-control" placeholder="doctor@oxysense.med" required autocomplete="username">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="input-login-password">Password</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="lock" class="input-icon"></i>
+              <input type="password" id="input-login-password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+              <button type="button" class="btn-pwd-toggle" id="btn-toggle-pwd" title="Show or hide password" aria-label="Toggle password visibility">
+                <i data-lucide="eye" id="icon-pwd-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" id="btn-login-submit">
+            <span id="login-btn-text">Sign In to Dashboard</span>
+            <span class="spinner-sm" id="login-spinner" style="display:none;"></span>
+          </button>
+        </form>
+
+        <!-- Demo Accounts Box -->
+        <div class="demo-creds-container">
+          <span class="demo-creds-title">💡 1-CLICK DEMO ACCOUNTS</span>
+          <div class="demo-creds-grid">
+            <button type="button" class="cred-card-btn" data-email="doctor@oxysense.med" data-pwd="doctor123">
+              <strong>Dr. Sharma</strong>
+              <span>doctor@oxysense.med</span>
+              <small>ICU Incharge · doctor123</small>
+            </button>
+            <button type="button" class="cred-card-btn" data-email="admin@oxysense.med" data-pwd="admin123">
+              <strong>Administrator</strong>
+              <span>admin@oxysense.med</span>
+              <small>Biomedical Admin · admin123</small>
+            </button>
+            <button type="button" class="cred-card-btn" data-email="nurse@oxysense.med" data-pwd="nurse123">
+              <strong>Nurse Priya</strong>
+              <span>nurse@oxysense.med</span>
+              <small>Respiratory Care · nurse123</small>
+            </button>
+          </div>
+        </div>
+
+        <div class="login-footer-disclaimer">
+          <span>⚠️ Demonstration authentication layer for university project evaluation.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 4. EXISTING MULTI-CYLINDER DASHBOARD -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div id="screen-dashboard" class="app-screen dashboard-screen">
   <div class="app-container">
     
     <!-- ═════════════════════════════════════════════════════════════════════ -->
@@ -131,13 +484,21 @@
             </button>
           </div>
 
-          <!-- User Profile -->
+          <!-- Navigation to Home -->
+          <button class="btn-dash-home" id="btn-dash-home" title="Go to Website Home Page">
+            <i data-lucide="home"></i> <span>Home</span>
+          </button>
+
+          <!-- User Profile & Logout -->
           <div class="user-profile">
-            <div class="avatar">DS</div>
+            <div class="avatar" id="dash-user-avatar">DS</div>
             <div class="user-meta">
-              <span class="user-name">Dr. Sharma</span>
-              <span class="user-role">ICU Ward Incharge</span>
+              <span class="user-name" id="dash-user-name">Dr. Sharma</span>
+              <span class="user-role" id="dash-user-role">ICU Ward Incharge</span>
             </div>
+            <button class="btn-dash-logout" id="btn-dash-logout" title="Sign Out of Dashboard" aria-label="Sign out">
+              <i data-lucide="log-out"></i>
+            </button>
           </div>
         </div>
       </header>
@@ -763,6 +1124,7 @@
 
     </div>
   </div>
+  </div><!-- /screen-dashboard -->
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- CYLINDER DETAIL MODAL -->

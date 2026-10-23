@@ -1,5 +1,5 @@
 /**
- * static/js/app.js — OxySense Web Dashboard Main Application Controller
+ * static/js/app.js — OxySense Web Application Flow & Dashboard Controller
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -8,13 +8,310 @@ document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
   }
 
-  // State
+  // ═════════════════════════════════════════════════════════════════════════
+  // STATE MANAGEMENT
+  // ═════════════════════════════════════════════════════════════════════════
   let streamInterval = null;
   let isStreaming = true;
   let currentView = 'view-overview';
+  let currentScreen = 'screen-splash';
+  let currentUser = null;
+
+  // Restore session from sessionStorage if available
+  const storedUser = sessionStorage.getItem('oxysense_user');
+  if (storedUser) {
+    try {
+      currentUser = JSON.parse(storedUser);
+    } catch (e) {
+      currentUser = null;
+    }
+  }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // 1. Navigation & View Switching
+  // 1. SCREEN ROUTER & NAVIGATION FLOW
+  // ═════════════════════════════════════════════════════════════════════════
+  const screens = document.querySelectorAll('.app-screen');
+
+  function showScreen(screenId) {
+    // Route Protection: Dashboard requires authentication
+    if (screenId === 'screen-dashboard' && !currentUser) {
+      showToast('⚠️ Please sign in to access the clinical dashboard');
+      showScreen('screen-login');
+      return;
+    }
+
+    currentScreen = screenId;
+
+    screens.forEach(s => {
+      s.classList.remove('active');
+    });
+
+    const target = document.getElementById(screenId);
+    if (target) {
+      target.classList.add('active');
+    }
+
+    // Update screen-specific states
+    if (screenId === 'screen-home') {
+      updateHomeAuthState();
+      OxyCharts.initHomePreviewChart();
+      window.scrollTo(0, 0);
+    } else if (screenId === 'screen-dashboard') {
+      updateDashboardUserProfile();
+      OxyCharts.initOverviewCharts();
+      window.scrollTo(0, 0);
+    } else if (screenId === 'screen-login') {
+      const errBanner = document.getElementById('login-error-banner');
+      if (errBanner) errBanner.style.display = 'none';
+      window.scrollTo(0, 0);
+    }
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function updateHomeAuthState() {
+    const navAuthBtn = document.getElementById('btn-nav-auth');
+    const navAuthText = document.getElementById('nav-auth-text');
+    const heroCtaText = document.getElementById('hero-cta-text');
+
+    if (currentUser) {
+      if (navAuthText) navAuthText.textContent = 'Open Dashboard';
+      if (navAuthBtn) {
+        navAuthBtn.innerHTML = '<i data-lucide="layout-dashboard"></i> <span>Open Dashboard</span>';
+      }
+      if (heroCtaText) heroCtaText.textContent = 'Open Clinical Dashboard';
+    } else {
+      if (navAuthText) navAuthText.textContent = 'Login';
+      if (navAuthBtn) {
+        navAuthBtn.innerHTML = '<i data-lucide="log-in"></i> <span>Login</span>';
+      }
+      if (heroCtaText) heroCtaText.textContent = 'Explore Dashboard';
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function updateDashboardUserProfile() {
+    if (!currentUser) return;
+    const nameEl = document.getElementById('dash-user-name');
+    const roleEl = document.getElementById('dash-user-role');
+    const avatarEl = document.getElementById('dash-user-avatar');
+
+    if (nameEl) nameEl.textContent = currentUser.name || 'Staff User';
+    if (roleEl) roleEl.textContent = currentUser.role || 'Clinical Operator';
+    if (avatarEl) {
+      const initials = (currentUser.name || 'SU')
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .substring(0, 2)
+        .toUpperCase();
+      avatarEl.textContent = initials;
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 2. SPLASH SCREEN INITIALIZATION
+  // ═════════════════════════════════════════════════════════════════════════
+  function initSplashScreen() {
+    const progressBar = document.getElementById('splash-progress');
+    const statusText = document.getElementById('splash-status');
+    const splashScreen = document.getElementById('screen-splash');
+
+    let progress = 15;
+    if (progressBar) progressBar.style.width = '15%';
+
+    const splashTimer = setInterval(() => {
+      progress += 25;
+      if (progressBar) progressBar.style.width = `${progress}%`;
+
+      if (progress === 40 && statusText) {
+        statusText.textContent = 'Loading IoT telemetry models...';
+      } else if (progress === 65 && statusText) {
+        statusText.textContent = 'Synchronizing simulation engine...';
+      } else if (progress >= 100) {
+        clearInterval(splashTimer);
+        if (statusText) statusText.textContent = 'System ready.';
+
+        setTimeout(() => {
+          splashScreen?.classList.add('fade-out');
+          setTimeout(() => {
+            splashScreen?.classList.remove('active');
+            splashScreen?.classList.remove('fade-out');
+
+            // Default to Home Page; if user is already logged in on refresh, go to Dashboard
+            if (currentUser) {
+              showScreen('screen-dashboard');
+              showToast(`Welcome back, ${currentUser.name}`);
+            } else {
+              showScreen('screen-home');
+            }
+          }, 350);
+        }, 300);
+      }
+    }, 180);
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 3. HOME PAGE INTERACTIONS
+  // ═════════════════════════════════════════════════════════════════════════
+  // Navbar Login / Dashboard CTA
+  document.getElementById('btn-nav-auth')?.addEventListener('click', () => {
+    if (currentUser) {
+      showScreen('screen-dashboard');
+    } else {
+      showScreen('screen-login');
+    }
+  });
+
+  // Hero Explore Dashboard CTA
+  document.getElementById('btn-hero-dashboard')?.addEventListener('click', () => {
+    if (currentUser) {
+      showScreen('screen-dashboard');
+    } else {
+      showScreen('screen-login');
+    }
+  });
+
+  // Preview Card Launch CTA
+  document.getElementById('btn-preview-launch')?.addEventListener('click', () => {
+    if (currentUser) {
+      showScreen('screen-dashboard');
+    } else {
+      showScreen('screen-login');
+    }
+  });
+
+  // Footer Login button
+  document.getElementById('btn-footer-login')?.addEventListener('click', () => {
+    showScreen('screen-login');
+  });
+
+  // Smooth scroll for Home nav links
+  document.querySelectorAll('.home-nav-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const targetId = link.getAttribute('href');
+      if (targetId && targetId.startsWith('#')) {
+        e.preventDefault();
+        document.querySelectorAll('.home-nav-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+
+        if (targetId === '#screen-home') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          const section = document.querySelector(targetId);
+          if (section) {
+            section.scrollIntoView({ behavior: 'smooth' });
+          }
+        }
+      }
+    });
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 4. LOGIN PAGE & AUTHENTICATION
+  // ═════════════════════════════════════════════════════════════════════════
+  const loginForm = document.getElementById('form-login');
+  const loginEmailInput = document.getElementById('input-login-email');
+  const loginPwdInput = document.getElementById('input-login-password');
+  const pwdToggleBtn = document.getElementById('btn-toggle-pwd');
+  const pwdEyeIcon = document.getElementById('icon-pwd-eye');
+  const loginErrorBanner = document.getElementById('login-error-banner');
+  const loginErrorText = document.getElementById('login-error-text');
+  const loginSubmitBtn = document.getElementById('btn-login-submit');
+  const loginBtnText = document.getElementById('login-btn-text');
+  const loginSpinner = document.getElementById('login-spinner');
+
+  // Back to Home
+  document.getElementById('btn-login-back')?.addEventListener('click', () => {
+    showScreen('screen-home');
+  });
+
+  // Show/Hide password toggle
+  pwdToggleBtn?.addEventListener('click', () => {
+    if (loginPwdInput.type === 'password') {
+      loginPwdInput.type = 'text';
+      pwdEyeIcon?.setAttribute('data-lucide', 'eye-off');
+    } else {
+      loginPwdInput.type = 'password';
+      pwdEyeIcon?.setAttribute('data-lucide', 'eye');
+    }
+    if (window.lucide) lucide.createIcons();
+  });
+
+  // 1-Click Demo Accounts Quick-Fill
+  document.querySelectorAll('.cred-card-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const email = btn.getAttribute('data-email');
+      const pwd = btn.getAttribute('data-pwd');
+      if (loginEmailInput) loginEmailInput.value = email;
+      if (loginPwdInput) loginPwdInput.value = pwd;
+      if (loginErrorBanner) loginErrorBanner.style.display = 'none';
+      showToast(`Selected demo account: ${email}`);
+    });
+  });
+
+  // Login form submission
+  loginForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = loginEmailInput.value.trim();
+    const password = loginPwdInput.value;
+
+    if (!email || !password) {
+      if (loginErrorText) loginErrorText.textContent = 'Please enter both email and password.';
+      if (loginErrorBanner) loginErrorBanner.style.display = 'flex';
+      return;
+    }
+
+    // Set loading state
+    if (loginSubmitBtn) loginSubmitBtn.disabled = true;
+    if (loginBtnText) loginBtnText.style.display = 'none';
+    if (loginSpinner) loginSpinner.style.display = 'inline-block';
+    if (loginErrorBanner) loginErrorBanner.style.display = 'none';
+
+    try {
+      const res = await OxyAPI.login(email, password);
+      if (res.success && res.user) {
+        currentUser = res.user;
+        sessionStorage.setItem('oxysense_user', JSON.stringify(res.user));
+        showToast(`Signed in successfully as ${res.user.name}`);
+        showScreen('screen-dashboard');
+      } else {
+        if (loginErrorText) loginErrorText.textContent = res.error || 'Invalid credentials. Use demo accounts below.';
+        if (loginErrorBanner) loginErrorBanner.style.display = 'flex';
+      }
+    } catch (err) {
+      if (loginErrorText) loginErrorText.textContent = 'Connection error. Ensure the server is running.';
+      if (loginErrorBanner) loginErrorBanner.style.display = 'flex';
+    } finally {
+      if (loginSubmitBtn) loginSubmitBtn.disabled = false;
+      if (loginBtnText) loginBtnText.style.display = 'inline';
+      if (loginSpinner) loginSpinner.style.display = 'none';
+    }
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 5. DASHBOARD HEADER ACTIONS (Home & Logout)
+  // ═════════════════════════════════════════════════════════════════════════
+  // Navigate back to Home page
+  document.getElementById('btn-dash-home')?.addEventListener('click', () => {
+    showScreen('screen-home');
+  });
+
+  // Logout action
+  document.getElementById('btn-dash-logout')?.addEventListener('click', async () => {
+    try {
+      await OxyAPI.logout();
+    } catch (e) {
+      // Ignore network errors on logout
+    }
+    currentUser = null;
+    sessionStorage.removeItem('oxysense_user');
+    showToast('Logged out successfully.');
+    showScreen('screen-home');
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 6. DASHBOARD INTERNAL VIEW SWITCHING (Overview, Live, Fleet, etc.)
   // ═════════════════════════════════════════════════════════════════════════
   const navItems = document.querySelectorAll('.sidebar-menu .nav-item');
   const pageViews = document.querySelectorAll('.page-view');
@@ -61,7 +358,6 @@ document.addEventListener('DOMContentLoaded', () => {
     item.addEventListener('click', () => {
       const targetView = item.getAttribute('data-view');
       switchView(targetView);
-      // Close mobile menu if open
       document.getElementById('sidebar')?.classList.remove('mobile-open');
     });
   });
@@ -82,7 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ═════════════════════════════════════════════════════════════════════════
-  // 2. Telemetry Polling & Live Stream
+  // 7. TELEMETRY POLLING & LIVE STREAM
   // ═════════════════════════════════════════════════════════════════════════
   async function pollLiveTelemetry() {
     try {
@@ -90,11 +386,21 @@ document.addEventListener('DOMContentLoaded', () => {
       renderOverviewMetrics(data);
       OxyCharts.updateFromHistory(data.history);
 
-      // Also refresh tables if currently visible
-      if (currentView === 'view-cylinders') {
-        loadCylinderFleet(false);
-      } else if (currentView === 'view-history') {
-        renderHistoryRows(data.history);
+      // Also update home page preview card if visible
+      const homeP = document.getElementById('home-preview-p');
+      const homePSub = document.getElementById('home-preview-p-sub');
+      const homeF = document.getElementById('home-preview-f');
+      if (homeP) homeP.innerHTML = `${data.pressure.psi} <small>PSI</small>`;
+      if (homePSub) homePSub.textContent = `${data.pressure.bar} bar · ${data.pressure.percentage}% Capacity`;
+      if (homeF) homeF.innerHTML = `${data.flow.value.toFixed(1)} <small>L/min</small>`;
+
+      // Refresh tables if currently visible
+      if (currentScreen === 'screen-dashboard') {
+        if (currentView === 'view-cylinders') {
+          loadCylinderFleet(false);
+        } else if (currentView === 'view-history') {
+          renderHistoryRows(data.history);
+        }
       }
     } catch (err) {
       console.error('Telemetry polling error:', err);
@@ -142,93 +448,122 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ═════════════════════════════════════════════════════════════════════════
-  // 3. Overview Metrics Rendering
+  // 8. DASHBOARD OVERVIEW METRICS RENDERING
   // ═════════════════════════════════════════════════════════════════════════
   function renderOverviewMetrics(data) {
     if (!data) return;
 
     // Clock & Connection
-    document.getElementById('live-clock').textContent = data.device.last_update || '--:--:--';
-    
+    const clockEl = document.getElementById('live-clock');
+    if (clockEl) clockEl.textContent = data.device.last_update || '--:--:--';
+
     const pill = document.getElementById('esp32-status-pill');
     const pillText = document.getElementById('esp32-status-text');
-    if (data.device.esp32_connected) {
-      pill.className = 'status-pill online';
-      pillText.textContent = 'ESP32 Connected (Simulated)';
-    } else {
-      pill.className = 'status-pill offline';
-      pillText.textContent = 'Sensor Disconnected';
+    if (pill && pillText) {
+      if (data.device.esp32_connected) {
+        pill.className = 'status-pill online';
+        pillText.textContent = 'ESP32 Connected (Simulated)';
+      } else {
+        pill.className = 'status-pill offline';
+        pillText.textContent = 'Sensor Disconnected';
+      }
     }
 
     // Card A: Pressure
     const pVal = data.pressure.value;
     const pUnit = data.pressure.unit;
-    document.getElementById('val-pressure-primary').textContent = data.device.esp32_connected ? pVal : '--';
-    document.getElementById('unit-pressure-primary').textContent = pUnit;
-    document.getElementById('val-pressure-secondary').textContent = data.device.esp32_connected
-      ? `${data.pressure.bar} bar (${data.pressure.psi} PSI)`
-      : 'Telemetry Unavailable';
-    
+    const pPri = document.getElementById('val-pressure-primary');
+    const pUnitEl = document.getElementById('unit-pressure-primary');
+    const pSec = document.getElementById('val-pressure-secondary');
+
+    if (pPri) pPri.textContent = data.device.esp32_connected ? pVal : '--';
+    if (pUnitEl) pUnitEl.textContent = pUnit;
+    if (pSec) {
+      pSec.textContent = data.device.esp32_connected
+        ? `${data.pressure.bar} bar (${data.pressure.psi} PSI)`
+        : 'Telemetry Unavailable';
+    }
+
     const pFill = document.getElementById('pressure-progress');
-    const pPct = data.pressure.percentage || 0;
-    pFill.style.width = `${Math.min(100, Math.max(0, pPct))}%`;
-    if (data.status.level === 'CRITICAL') {
-      pFill.style.background = 'var(--status-critical)';
-    } else if (data.status.level === 'LOW_PRESSURE') {
-      pFill.style.background = 'var(--status-warning)';
-    } else {
-      pFill.style.background = 'linear-gradient(90deg, var(--blue-primary), var(--teal-primary))';
+    if (pFill) {
+      const pPct = data.pressure.percentage || 0;
+      pFill.style.width = `${Math.min(100, Math.max(0, pPct))}%`;
+      if (data.status.level === 'CRITICAL') {
+        pFill.style.background = 'var(--status-critical)';
+      } else if (data.status.level === 'LOW_PRESSURE') {
+        pFill.style.background = 'var(--status-warning)';
+      } else {
+        pFill.style.background = 'linear-gradient(90deg, var(--blue-primary), var(--teal-primary))';
+      }
     }
 
     // Card B: Flow
     const fVal = data.flow.value;
-    document.getElementById('val-flow-primary').textContent = data.device.esp32_connected ? fVal.toFixed(1) : '--';
-    document.getElementById('val-flow-prescribed').textContent = `Prescribed: ${data.flow.prescribed.toFixed(1)} L/min`;
+    const fPri = document.getElementById('val-flow-primary');
+    const fPres = document.getElementById('val-flow-prescribed');
     const fFill = document.getElementById('flow-progress');
-    fFill.style.width = `${Math.min(100, (fVal / 10.0) * 100)}%`;
-    const flowDiff = (fVal - data.flow.prescribed).toFixed(1);
-    document.getElementById('flow-diff-label').textContent = `${flowDiff > 0 ? '+' : ''}${flowDiff} L/min delta`;
+    const fDiff = document.getElementById('flow-diff-label');
+
+    if (fPri) fPri.textContent = data.device.esp32_connected ? fVal.toFixed(1) : '--';
+    if (fPres) fPres.textContent = `Prescribed: ${data.flow.prescribed.toFixed(1)} L/min`;
+    if (fFill) fFill.style.width = `${Math.min(100, (fVal / 10.0) * 100)}%`;
+    if (fDiff) {
+      const flowDiff = (fVal - data.flow.prescribed).toFixed(1);
+      fDiff.textContent = `${flowDiff > 0 ? '+' : ''}${flowDiff} L/min delta`;
+    }
 
     // Card C: ETE
-    document.getElementById('val-ete-primary').textContent = data.ete.display;
-    if (data.ete.valid) {
-      document.getElementById('val-ete-litres').textContent = `Est. Usable: ~${data.ete.remaining_litres} L remaining`;
-    } else {
-      document.getElementById('val-ete-litres').textContent = data.ete.reason || 'Estimate unavailable';
+    const etePri = document.getElementById('val-ete-primary');
+    const eteLit = document.getElementById('val-ete-litres');
+    if (etePri) etePri.textContent = data.ete.display;
+    if (eteLit) {
+      if (data.ete.valid) {
+        eteLit.textContent = `Est. Usable: ~${data.ete.remaining_litres} L remaining`;
+      } else {
+        eteLit.textContent = data.ete.reason || 'Estimate unavailable';
+      }
     }
 
     // Card D: Status
     const badge = document.getElementById('val-status-badge');
-    badge.textContent = data.status.label;
-    badge.className = `status-pill-large ${data.status.badge_class}`;
+    if (badge) {
+      badge.textContent = data.status.label;
+      badge.className = `status-pill-large ${data.status.badge_class}`;
+    }
 
     const iconWrap = document.getElementById('status-icon-wrap');
-    if (data.status.level === 'CRITICAL') {
-      iconWrap.className = 'icon-wrap red';
-      document.getElementById('val-status-desc').textContent = 'Urgent: Reserve nearing exhaustion. Stage replacement cylinder.';
-    } else if (data.status.level === 'LOW_PRESSURE') {
-      iconWrap.className = 'icon-wrap orange';
-      document.getElementById('val-status-desc').textContent = 'Warning: Pressure below configured clinical threshold.';
-    } else if (data.status.level === 'SENSOR_DISCONNECTED') {
-      iconWrap.className = 'icon-wrap gray';
-      document.getElementById('val-status-desc').textContent = 'Notice: Hardware communication interrupted or node offline.';
-    } else {
-      iconWrap.className = 'icon-wrap green';
-      document.getElementById('val-status-desc').textContent = 'All telemetry parameters within normal operational envelope.';
+    const statusDesc = document.getElementById('val-status-desc');
+    if (iconWrap && statusDesc) {
+      if (data.status.level === 'CRITICAL') {
+        iconWrap.className = 'icon-wrap red';
+        statusDesc.textContent = 'Urgent: Reserve nearing exhaustion. Stage replacement cylinder.';
+      } else if (data.status.level === 'LOW_PRESSURE') {
+        iconWrap.className = 'icon-wrap orange';
+        statusDesc.textContent = 'Warning: Pressure below configured clinical threshold.';
+      } else if (data.status.level === 'SENSOR_DISCONNECTED') {
+        iconWrap.className = 'icon-wrap gray';
+        statusDesc.textContent = 'Notice: Hardware communication interrupted or node offline.';
+      } else {
+        iconWrap.className = 'icon-wrap green';
+        statusDesc.textContent = 'All telemetry parameters within normal operational envelope.';
+      }
     }
 
     // Alert Badges
     const alertCount = data.active_alerts_count || 0;
-    document.getElementById('header-notif-badge').textContent = alertCount;
-    document.getElementById('nav-alert-count').textContent = alertCount;
-    document.getElementById('val-active-alerts-tag').textContent = `${alertCount} Active Alert${alertCount === 1 ? '' : 's'}`;
+    const hNotif = document.getElementById('header-notif-badge');
+    const navNotif = document.getElementById('nav-alert-count');
+    const actTag = document.getElementById('val-active-alerts-tag');
+    if (hNotif) hNotif.textContent = alertCount;
+    if (navNotif) navNotif.textContent = alertCount;
+    if (actTag) actTag.textContent = `${alertCount} Active Alert${alertCount === 1 ? '' : 's'}`;
 
     // Overview Fleet Table
     renderOverviewFleetTable();
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // 4. Fleet & Cylinders View
+  // 9. FLEET & CYLINDERS VIEW
   // ═════════════════════════════════════════════════════════════════════════
   async function renderOverviewFleetTable() {
     try {
@@ -322,6 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
       document.getElementById('cylinder-modal').classList.add('active');
+      if (window.lucide) lucide.createIcons();
     } catch (err) {
       console.error('Modal detail fetch error:', err);
     }
@@ -338,7 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ═════════════════════════════════════════════════════════════════════════
-  // 5. Alerts & Simulation Controls
+  // 10. ALERTS & SIMULATION CONTROLS
   // ═════════════════════════════════════════════════════════════════════════
   async function loadAlertsView() {
     try {
@@ -401,8 +737,6 @@ document.addEventListener('DOMContentLoaded', () => {
         histContainer.appendChild(div);
       });
 
-      if (window.lucide) lucide.createIcons();
-
       // Bind Acknowledge Buttons
       document.querySelectorAll('.btn-ack-alert').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -413,6 +747,8 @@ document.addEventListener('DOMContentLoaded', () => {
           pollLiveTelemetry();
         });
       });
+
+      if (window.lucide) lucide.createIcons();
     } catch (err) {
       console.error('Error loading alerts:', err);
     }
@@ -440,19 +776,24 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ═════════════════════════════════════════════════════════════════════════
-  // 6. AI Insights View
+  // 11. AI INSIGHTS VIEW
   // ═════════════════════════════════════════════════════════════════════════
   async function loadAiInsights() {
     try {
       const data = await OxyAPI.getAiInsights();
-      
-      document.getElementById('ai-engine-full-name').textContent = data.engine;
-      document.getElementById('ai-engine-tag').textContent = data.is_llm_active ? 'Cloud LLM' : 'Rule Engine';
-      document.getElementById('ai-timestamp').textContent = `Last analyzed: ${data.timestamp}`;
-      document.getElementById('ai-main-summary').textContent = data.summary;
 
-      // Update overview widget snippet as well
-      document.getElementById('ai-overview-summary').textContent = data.summary;
+      const engFull = document.getElementById('ai-engine-full-name');
+      const engTag = document.getElementById('ai-engine-tag');
+      const timeEl = document.getElementById('ai-timestamp');
+      const mainSum = document.getElementById('ai-main-summary');
+      const ovSum = document.getElementById('ai-overview-summary');
+
+      if (engFull) engFull.textContent = data.engine;
+      if (engTag) engTag.textContent = data.is_llm_active ? 'Cloud LLM' : 'Rule Engine';
+      if (timeEl) timeEl.textContent = `Last analyzed: ${data.timestamp}`;
+      if (mainSum) mainSum.textContent = data.summary;
+      if (ovSum) ovSum.textContent = data.summary;
+
       const ovActions = document.getElementById('ai-overview-actions');
       if (ovActions) {
         ovActions.innerHTML = '';
@@ -500,7 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ═════════════════════════════════════════════════════════════════════════
-  // 7. Historical Reports View
+  // 12. HISTORICAL REPORTS VIEW
   // ═════════════════════════════════════════════════════════════════════════
   async function loadHistoryTable() {
     try {
@@ -516,7 +857,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!tbody || !points) return;
     tbody.innerHTML = '';
 
-    // Reverse to show newest first
     const reversed = [...points].reverse().slice(0, 25);
     reversed.forEach(p => {
       const tr = document.createElement('tr');
@@ -535,7 +875,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // 8. Settings View
+  // 13. SETTINGS VIEW
   // ═════════════════════════════════════════════════════════════════════════
   async function loadSettingsForm() {
     try {
@@ -581,7 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ═════════════════════════════════════════════════════════════════════════
-  // 9. Utilities & Helpers
+  // 14. UTILITIES & TOASTS
   // ═════════════════════════════════════════════════════════════════════════
   function formatStatus(status) {
     if (status === 'NORMAL') return 'Normal';
@@ -609,9 +949,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // Initial Boot
+  // INITIAL BOOTSTRAP
   // ═════════════════════════════════════════════════════════════════════════
-  OxyCharts.initOverviewCharts();
-  loadAiInsights();
+  initSplashScreen();
   startStreaming();
 });

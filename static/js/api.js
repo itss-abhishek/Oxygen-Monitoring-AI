@@ -69,5 +69,31 @@ const OxyAPI = {
       body: JSON.stringify(settings)
     });
     return res.json();
+  },
+
+  async login(email, password) {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    return res.json();
+  },
+
+  async logout() {
+    const res = await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return res.json();
+  },
+
+  async getSession() {
+    try {
+      const res = await fetch('/api/auth/session');
+      return res.json();
+    } catch (err) {
+      return { authenticated: false };
+    }
   }
 };

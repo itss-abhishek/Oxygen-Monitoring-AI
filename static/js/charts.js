@@ -6,6 +6,38 @@ const OxyCharts = {
   pressureChart: null,
   flowChart: null,
   liveFullChart: null,
+  homePreviewChart: null,
+
+  initHomePreviewChart() {
+    const ctxH = document.getElementById('chart-home-preview');
+    if (ctxH && !this.homePreviewChart) {
+      this.homePreviewChart = new Chart(ctxH, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Cylinder Pressure (PSI)',
+            data: [],
+            borderColor: '#0d9488',
+            backgroundColor: 'rgba(13, 148, 136, 0.12)',
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: true } },
+          scales: {
+            x: { display: false },
+            y: { display: false, suggestedMin: 0, suggestedMax: 3000 }
+          }
+        }
+      });
+    }
+  },
 
   initOverviewCharts() {
     const ctxP = document.getElementById('chart-pressure');
@@ -208,6 +240,12 @@ const OxyCharts = {
       this.liveFullChart.data.datasets[0].data = pressures;
       this.liveFullChart.data.datasets[1].data = flows;
       this.liveFullChart.update('none');
+    }
+
+    if (this.homePreviewChart) {
+      this.homePreviewChart.data.labels = labels.slice(-15);
+      this.homePreviewChart.data.datasets[0].data = pressures.slice(-15);
+      this.homePreviewChart.update('none');
     }
   }
 };

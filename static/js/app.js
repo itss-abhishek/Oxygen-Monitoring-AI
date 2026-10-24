@@ -354,18 +354,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.lucide) lucide.createIcons();
   }
 
+  function closeMobileSidebar() {
+    document.getElementById('sidebar')?.classList.remove('mobile-open');
+    document.getElementById('sidebar-overlay')?.classList.remove('active');
+  }
+
+  function toggleMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const isOpen = sidebar?.classList.toggle('mobile-open');
+    overlay?.classList.toggle('active', !!isOpen);
+  }
+
   navItems.forEach(item => {
     item.addEventListener('click', () => {
       const targetView = item.getAttribute('data-view');
       switchView(targetView);
-      document.getElementById('sidebar')?.classList.remove('mobile-open');
+      closeMobileSidebar();
     });
   });
 
-  // Mobile menu toggle
-  document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
-    document.getElementById('sidebar')?.classList.toggle('mobile-open');
-  });
+  // Mobile menu toggle & close handlers
+  document.getElementById('mobile-menu-btn')?.addEventListener('click', toggleMobileSidebar);
+  document.getElementById('sidebar-close-btn')?.addEventListener('click', closeMobileSidebar);
+  document.getElementById('sidebar-overlay')?.addEventListener('click', closeMobileSidebar);
 
   // Quick jump button from overview to fleet
   document.getElementById('btn-view-all-cylinders')?.addEventListener('click', () => {

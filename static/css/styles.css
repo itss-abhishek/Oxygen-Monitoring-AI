@@ -4,6 +4,28 @@
    ═════════════════════════════════════════════════════════════════════════ */
 
 :root {
+  /* shadcn/ui Design Tokens (Light Theme) */
+  --background: 210 40% 98%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 174 85% 31%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 174 85% 31%;
+  --radius: 0.5rem;
+
   /* Color Palette */
   --bg-app: #f8fafc;
   --bg-card: #ffffff;
@@ -49,6 +71,190 @@
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
   --shadow-md: 0 4px 14px rgba(0,0,0,0.06);
   --shadow-lg: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   UI-STYLING: DARK THEME SUPPORT (.dark)
+   ═════════════════════════════════════════════════════════════════════════ */
+.dark {
+  --bg-app: #0b1120;
+  --bg-card: #0f172a;
+  --bg-sidebar: #050914;
+  --bg-sidebar-hover: #101c34;
+  --bg-sidebar-active: #172d54;
+
+  --border-light: #1e293b;
+  --border-subtle: #172033;
+
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-light: #64748b;
+  --text-sidebar: #cbd5e1;
+  --text-sidebar-bright: #ffffff;
+
+  /* shadcn/ui Dark Tokens */
+  --background: 222.2 47.4% 6%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 47.4% 8%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 47.4% 8%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 174 75% 42%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 15%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 174 75% 42%;
+}
+
+.dark .top-header {
+  background-color: #0f172a;
+  border-bottom-color: #1e293b;
+}
+
+.dark .card,
+.dark .metric-card,
+.dark .chart-card,
+.dark .simulation-banner,
+.dark .modal-card,
+.dark .hero-dashboard-preview-card,
+.dark .home-footer,
+.dark .login-card {
+  background-color: #0f172a;
+  border-color: #1e293b;
+  color: #f8fafc;
+}
+
+.dark .home-screen,
+.dark .home-navbar {
+  background-color: #0b1120;
+  border-bottom-color: #1e293b;
+  color: #f8fafc;
+}
+
+.dark .home-hero {
+  background: linear-gradient(180deg, #0f172a 0%, #0b1120 100%);
+  border-bottom-color: #1e293b;
+}
+
+.dark .home-hero-heading,
+.dark .header-title-group h1,
+.dark .card-label,
+.dark .metric-value,
+.dark .preview-title,
+.dark .preview-val,
+.dark .login-brand h2,
+.dark .login-card-header h3 {
+  color: #f8fafc;
+}
+
+.dark .home-nav-link {
+  color: #cbd5e1;
+}
+
+.dark .home-nav-link:hover,
+.dark .home-nav-link.active {
+  color: var(--teal-primary);
+}
+
+.dark .preview-metric {
+  background-color: #172033;
+}
+
+.dark .preview-sub {
+  color: #94a3b8;
+}
+
+.dark .data-table th {
+  background-color: #111c33;
+  color: #94a3b8;
+  border-bottom-color: #1e293b;
+}
+
+.dark .data-table td {
+  border-bottom-color: #172033;
+  color: #e2e8f0;
+}
+
+.dark .data-table tr:hover td {
+  background-color: #132240;
+}
+
+.dark .search-wrap input,
+.dark .form-select,
+.dark .input-icon-wrap input {
+  background-color: #111c33;
+  border-color: #1e293b;
+  color: #f8fafc;
+}
+
+.dark .mobile-menu-btn,
+.dark .btn-dash-home,
+.dark .cred-card-btn,
+.dark .status-pill,
+.dark .btn-outline-light {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+.dark .btn-outline-light:hover {
+  background-color: #28374d;
+}
+
+.dark .hero-badge-pill {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+/* Theme Toggle Button (ui-styling) */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: #f1f5f9;
+  border: 1px solid var(--border-light);
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.theme-toggle-btn .moon-icon {
+  display: none;
+}
+
+.dark .theme-toggle-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+.dark .theme-toggle-btn:hover {
+  background: #28374d;
+}
+
+.dark .theme-toggle-btn .sun-icon {
+  display: none;
+}
+
+.dark .theme-toggle-btn .moon-icon {
+  display: block;
 }
 
 /* Reset & Basics */

@@ -12,7 +12,54 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Custom Stylesheet -->
+  <!-- Tailwind CSS CDN (ui-styling) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            border: 'hsl(var(--border))',
+            input: 'hsl(var(--input))',
+            ring: 'hsl(var(--ring))',
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            primary: {
+              DEFAULT: 'hsl(var(--primary))',
+              foreground: 'hsl(var(--primary-foreground))',
+            },
+            secondary: {
+              DEFAULT: 'hsl(var(--secondary))',
+              foreground: 'hsl(var(--secondary-foreground))',
+            },
+            destructive: {
+              DEFAULT: 'hsl(var(--destructive))',
+              foreground: 'hsl(var(--destructive-foreground))',
+            },
+            muted: {
+              DEFAULT: 'hsl(var(--muted))',
+              foreground: 'hsl(var(--muted-foreground))',
+            },
+            accent: {
+              DEFAULT: 'hsl(var(--accent))',
+              foreground: 'hsl(var(--accent-foreground))',
+            },
+            card: {
+              DEFAULT: 'hsl(var(--card))',
+              foreground: 'hsl(var(--card-foreground))',
+            },
+          },
+          borderRadius: {
+            lg: 'var(--radius)',
+            md: 'calc(var(--radius) - 2px)',
+            sm: 'calc(var(--radius) - 4px)',
+          }
+        }
+      }
+    };
+  </script>
+  <!-- Custom Stylesheet with shadcn Design Tokens -->
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body class="theme-light">
@@ -60,6 +107,10 @@
           <a href="#home-about" class="home-nav-link">About Project</a>
         </nav>
         <div class="home-nav-actions">
+          <button class="theme-toggle-btn" id="home-theme-toggle" title="Toggle Light/Dark Theme" aria-label="Toggle theme">
+            <i data-lucide="sun" class="sun-icon icon-sm"></i>
+            <i data-lucide="moon" class="moon-icon icon-sm"></i>
+          </button>
           <button class="btn btn-primary" id="btn-nav-auth">
             <i data-lucide="log-in"></i> <span id="nav-auth-text">Login</span>
           </button>
@@ -481,6 +532,12 @@
             <i data-lucide="clock" class="icon-sm"></i>
             <span id="live-clock">--:--:--</span>
           </div>
+
+          <!-- Theme Toggle (ui-styling) -->
+          <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle Light/Dark Theme" aria-label="Toggle theme">
+            <i data-lucide="sun" class="sun-icon icon-sm"></i>
+            <i data-lucide="moon" class="moon-icon icon-sm"></i>
+          </button>
 
           <!-- Notification Bell -->
           <div class="notification-wrap" id="header-notif-btn">

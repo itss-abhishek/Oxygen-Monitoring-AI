@@ -390,6 +390,42 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ═════════════════════════════════════════════════════════════════════════
+  // UI-STYLING: THEME MANAGEMENT (Light / Dark Mode with Persistence)
+  // ═════════════════════════════════════════════════════════════════════════
+  function initTheme() {
+    const savedTheme = localStorage.getItem('oxysense-theme') || 
+      (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(savedTheme);
+  }
+
+  function applyTheme(theme) {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.body.classList.remove('theme-light');
+      document.body.classList.add('theme-dark');
+      localStorage.setItem('oxysense-theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('theme-dark');
+      document.body.classList.add('theme-light');
+      localStorage.setItem('oxysense-theme', 'light');
+    }
+    if (window.lucide) lucide.createIcons();
+    if (window.OxyCharts && typeof OxyCharts.updateTheme === 'function') {
+      OxyCharts.updateTheme(theme);
+    }
+  }
+
+  function toggleTheme() {
+    const isDark = document.documentElement.classList.contains('dark');
+    applyTheme(isDark ? 'light' : 'dark');
+  }
+
+  document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleTheme);
+  document.getElementById('home-theme-toggle')?.addEventListener('click', toggleTheme);
+  initTheme();
+
+  // ═════════════════════════════════════════════════════════════════════════
   // 7. TELEMETRY POLLING & LIVE STREAM
   // ═════════════════════════════════════════════════════════════════════════
   async function pollLiveTelemetry() {

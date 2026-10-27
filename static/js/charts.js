@@ -247,5 +247,29 @@ const OxyCharts = {
       this.homePreviewChart.data.datasets[0].data = pressures.slice(-15);
       this.homePreviewChart.update('none');
     }
+  },
+
+  updateTheme(theme) {
+    const isDark = theme === 'dark';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+
+    [this.pressureChart, this.flowChart, this.liveFullChart].forEach(chart => {
+      if (chart && chart.options && chart.options.scales) {
+        if (chart.options.scales.x) {
+          if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = gridColor;
+          if (chart.options.scales.x.ticks) chart.options.scales.x.ticks.color = textColor;
+        }
+        if (chart.options.scales.y) {
+          if (chart.options.scales.y.grid) chart.options.scales.y.grid.color = gridColor;
+          if (chart.options.scales.y.ticks) chart.options.scales.y.ticks.color = textColor;
+        }
+        if (chart.options.scales.y1) {
+          if (chart.options.scales.y1.grid) chart.options.scales.y1.grid.color = gridColor;
+          if (chart.options.scales.y1.ticks) chart.options.scales.y1.ticks.color = textColor;
+        }
+        chart.update();
+      }
+    });
   }
 };

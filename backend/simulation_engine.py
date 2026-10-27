@@ -184,14 +184,15 @@ class TelemetryState:
             self.is_sensor_connected = True
             self.current_pressure_bar = 160.0
             self.current_flow_lpm = self.config["prescribed_flow_lpm"]
-            self.alerts = [a for a in self.alerts if a["acknowledged"]]
+            for a in self.alerts:
+                a["acknowledged"] = True
             self.alerts.insert(0, {
                 "id": f"ALT-{int(time.time())}",
                 "severity": "INFO",
                 "title": "Simulation Reset to Normal",
                 "description": "Cylinder supply restored to 160 bar. Telemetry nominal.",
                 "timestamp": now_str,
-                "acknowledged": False
+                "acknowledged": True
             })
         elif scenario == "LOW_PRESSURE":
             self.simulation_scenario = "LOW_PRESSURE"

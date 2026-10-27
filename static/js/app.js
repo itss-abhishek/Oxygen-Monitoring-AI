@@ -724,7 +724,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // ═════════════════════════════════════════════════════════════════════════
   // 10. ALERTS & SIMULATION CONTROLS
   // ═════════════════════════════════════════════════════════════════════════
-  async function loadAlertsView() {
+  async function loadAlertsView(isManualClick = false) {
+    const refreshBtn = document.getElementById('btn-refresh-alerts');
+    const icon = refreshBtn?.querySelector('i');
+    if (isManualClick && icon) {
+      icon.classList.add('animate-spin');
+    }
+
     try {
       const data = await OxyAPI.getAlerts();
       const activeContainer = document.getElementById('active-alerts-container');
@@ -737,7 +743,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const unack = data.alerts.filter(a => !a.acknowledged);
       const ack = data.alerts.filter(a => a.acknowledged);
 
-      document.getElementById('active-alert-counter').textContent = `${unack.length} Active`;
+      const counter = document.getElementById('active-alert-counter');
+      if (counter) counter.textContent = `${unack.length} Active`;
 
       if (!unack.length) {
         activeContainer.innerHTML = `<div style="padding:24px;text-align:center;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-weight:500;">All telemetry nominal. No active unacknowledged alerts.</div>`;
@@ -790,37 +797,54 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', async () => {
           const alertId = btn.getAttribute('data-id');
           await OxyAPI.acknowledgeAlert(alertId);
-          showToast(`Alert ${alertId} acknowledged.`);
+          showToast(`Alert ${alertId} acknowledged and resolved.`);
           loadAlertsView();
           pollLiveTelemetry();
         });
       });
 
       if (window.lucide) lucide.createIcons();
+
+      if (isManualClick) {
+        showToast(`Alerts refreshed: ${unack.length} active alarms`);
+      }
     } catch (err) {
       console.error('Error loading alerts:', err);
+      if (isManualClick) {
+        showToast('Failed to refresh alerts');
+      }
+    } finally {
+      if (icon) {
+        setTimeout(() => icon.classList.remove('animate-spin'), 500);
+      }
     }
   }
 
-  document.getElementById('btn-refresh-alerts')?.addEventListener('click', loadAlertsView);
+  document.getElementById('btn-refresh-alerts')?.addEventListener('click', () => {
+    loadAlertsView(true);
+    pollLiveTelemetry();
+  });
 
   // Simulation Scenario Triggers
   document.getElementById('btn-sim-low')?.addEventListener('click', async () => {
     await OxyAPI.triggerScenario('LOW_PRESSURE');
     showToast('Simulation: Low Supply condition activated (42 Bar / 609 PSI)');
     pollLiveTelemetry();
+    loadAlertsView();
   });
 
   document.getElementById('btn-sim-disconnect')?.addEventListener('click', async () => {
     await OxyAPI.triggerScenario('SENSOR_DISCONNECTED');
     showToast('Simulation: Sensor Disconnected / Telemetry Lost');
     pollLiveTelemetry();
+    loadAlertsView();
   });
 
   document.getElementById('btn-sim-reset')?.addEventListener('click', async () => {
     await OxyAPI.triggerScenario('RESET');
     showToast('Simulation: Restored to nominal baseline (160 Bar / 2320 PSI)');
     pollLiveTelemetry();
+    loadAlertsView();
   });
 
   // ═════════════════════════════════════════════════════════════════════════

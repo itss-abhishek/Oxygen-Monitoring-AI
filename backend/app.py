@@ -5,6 +5,7 @@ backend/app.py — Flask REST API Server for OxySense Web Dashboard.
 import os
 import io
 import csv
+from datetime import datetime
 from flask import Flask, jsonify, request, render_template, Response, send_file, session
 from backend.simulation_engine import telemetry_instance, generate_ai_insights
 from backend.mock_data import MOCK_CYLINDERS
@@ -253,27 +254,82 @@ def export_csv():
         headers={"Content-Disposition": "attachment;filename=oxysense_telemetry_report.csv"}
     )
 
+def calculate_cylinder_ete(capacity_l, pressure_bar, flow_lpm):
+    if flow_lpm <= 0 or pressure_bar <= 0:
+        return "Unavailable"
+    remaining_l = capacity_l * (pressure_bar / 200.0)
+    minutes = remaining_l / flow_lpm
+    hours = int(minutes // 60)
+    mins = int(minutes % 60)
+    return f"{hours}h {mins:02d}m"
+
+def classify_cylinder_status(pressure_bar, is_connected=True):
+    if not is_connected or pressure_bar <= 0:
+        return "SENSOR_DISCONNECTED"
+    if pressure_bar <= 20.0:
+        return "CRITICAL"
+    if pressure_bar <= 50.0:
+        return "LOW_PRESSURE"
+    return "NORMAL"
+
 @app.route("/api/telemetry", methods=["POST"])
 def ingest_hardware_telemetry():
     """
-    Hardware Ingestion Endpoint for ESP32 / MQTT Bridge.
-    Allows real ESP32 microcontrollers to post JSON telemetry:
-    {
-      "cylinder_id": "CYL-ICU-101",
-      "pressure_bar": 142.5,
-      "flow_lpm": 2.1,
-      "battery_pct": 89
-    }
+    Hardware Ingestion Endpoint for ESP32 / USB Serial / MQTT Bridge.
+    Allows real ESP32 microcontrollers to post telemetry for 1 or all 6 cylinders:
+    Single cylinder:
+    { "cylinder_id": "CYL-ICU-101", "pressure_bar": 142.5, "flow_lpm": 2.1, "battery_pct": 89 }
+
+    Multi-cylinder batch:
+    { "cylinders": [ { "cylinder_id": "CYL-ICU-101", ... }, ... ] }
     """
     data = request.get_json() or {}
-    if "pressure_bar" in data:
-        telemetry_instance.current_pressure_bar = float(data["pressure_bar"])
-    if "flow_lpm" in data:
-        telemetry_instance.current_flow_lpm = float(data["flow_lpm"])
-    telemetry_instance.is_sensor_connected = True
-    telemetry_instance.config["simulation_mode"] = False
-    telemetry_instance.last_update = datetime.now()
-    return jsonify({"success": True, "message": "Telemetry accepted from hardware node"})
+    now_str = datetime.now().strftime("%H:%M:%S")
+
+    cyl_list = data.get("cylinders")
+    if not cyl_list:
+        if "cylinder_id" in data:
+            cyl_list = [data]
+        elif "pressure_bar" in data:
+            data["cylinder_id"] = telemetry_instance.config["cylinder_id"]
+            cyl_list = [data]
+        else:
+            cyl_list = []
+
+    updated_count = 0
+    for cyl in cyl_list:
+        cid = cyl.get("cylinder_id")
+        p_bar = float(cyl.get("pressure_bar", 0.0))
+        f_lpm = float(cyl.get("flow_lpm", 2.0))
+        batt = int(cyl.get("battery_pct", 90))
+
+        # Update matching cylinder in MOCK_CYLINDERS
+        for c in MOCK_CYLINDERS:
+            if c["id"] == cid:
+                c["pressure_bar"] = round(p_bar, 1)
+                c["pressure_psi"] = round(p_bar * 14.5038, 1)
+                c["flow_lpm"] = round(f_lpm, 2)
+                c["battery_pct"] = batt
+                c["status"] = classify_cylinder_status(p_bar, True)
+                c["ete"] = calculate_cylinder_ete(c.get("capacity_l", 660), p_bar, f_lpm)
+                c["last_updated"] = f"ESP32 ({now_str})"
+                updated_count += 1
+                break
+
+        # If primary cylinder, mirror to telemetry_instance
+        if cid == telemetry_instance.config["cylinder_id"]:
+            telemetry_instance.current_pressure_bar = p_bar
+            telemetry_instance.current_flow_lpm = f_lpm
+            telemetry_instance.is_sensor_connected = True
+            telemetry_instance.config["simulation_mode"] = False
+            telemetry_instance.last_update = datetime.now()
+
+    return jsonify({
+        "success": True,
+        "message": f"Processed {updated_count} cylinders from ESP32",
+        "updated_cylinders": updated_count,
+        "timestamp": now_str
+    })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

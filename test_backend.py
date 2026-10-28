@@ -95,6 +95,31 @@ def test_api_export_csv(client):
     assert "text/csv" in res.content_type
     assert b"ISO Timestamp" in res.data
 
+def test_api_telemetry_hardware_ingest(client):
+    # Test batch ingestion of 6 cylinders from ESP32
+    payload = {
+        "cylinders": [
+            {"cylinder_id": "CYL-ICU-101", "pressure_bar": 152.0, "flow_lpm": 2.0},
+            {"cylinder_id": "CYL-ER-204", "pressure_bar": 38.0, "flow_lpm": 4.5},
+            {"cylinder_id": "CYL-GW-302", "pressure_bar": 188.0, "flow_lpm": 1.5},
+            {"cylinder_id": "CYL-REC-108", "pressure_bar": 17.0, "flow_lpm": 3.0},
+            {"cylinder_id": "CYL-PED-044", "pressure_bar": 142.0, "flow_lpm": 1.0},
+            {"cylinder_id": "CYL-TRANS-012", "pressure_bar": 96.0, "flow_lpm": 2.5}
+        ]
+    }
+    res = client.post("/api/telemetry", json=payload)
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+    assert data["updated_cylinders"] == 6
+
+    # Verify cylinders endpoint reflects updated ESP32 data
+    res_cyl = client.get("/api/cylinders")
+    assert res_cyl.status_code == 200
+    cyls = {c["id"]: c for c in res_cyl.get_json()["cylinders"]}
+    assert cyls["CYL-ICU-101"]["pressure_bar"] == 152.0
+    assert cyls["CYL-REC-108"]["status"] == "CRITICAL"
+
 def test_auth_login_success(client):
     res = client.post("/api/auth/login", json={"email": "doctor@oxysense.med", "password": "doctor123"})
     assert res.status_code == 200

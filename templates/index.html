@@ -515,6 +515,20 @@
         </div>
 
         <div class="header-right">
+          <!-- Active Monitored Cylinder Selector (Global) -->
+          <div class="header-cylinder-selector" title="Select Monitored Cylinder">
+            <i data-lucide="gauge" class="icon-sm text-cyan-500"></i>
+            <span class="text-xs font-semibold text-muted">Cylinder:</span>
+            <select id="global-select-cylinder" class="global-cylinder-dropdown" aria-label="Select Monitored Cylinder">
+              <option value="CYL-ICU-101">CYL-ICU-101 (ICU Bed 04)</option>
+              <option value="CYL-ER-204">CYL-ER-204 (ER Bay 02)</option>
+              <option value="CYL-GW-302">CYL-GW-302 (General Ward Bed 12)</option>
+              <option value="CYL-REC-108">CYL-REC-108 (Recovery Bed 01)</option>
+              <option value="CYL-PED-044">CYL-PED-044 (Pediatrics Bed 05)</option>
+              <option value="CYL-TRANS-012">CYL-TRANS-012 (Transit Ambulance 03)</option>
+            </select>
+          </div>
+
           <!-- Connection Status Pill -->
           <div class="status-pill online" id="esp32-status-pill">
             <span class="status-dot"></span>
@@ -1134,6 +1148,19 @@
             <p class="text-muted">Export verified logs and examine consumption patterns.</p>
           </div>
           <div class="header-actions">
+            <!-- Cylinder Selector for History View -->
+            <div class="history-cyl-selector-wrap">
+              <i data-lucide="gauge" class="icon-sm text-cyan-500"></i>
+              <label for="history-select-cylinder">Cylinder:</label>
+              <select id="history-select-cylinder" class="history-cylinder-dropdown" aria-label="Select Cylinder for History">
+                <option value="CYL-ICU-101">CYL-ICU-101 (ICU Bed 04)</option>
+                <option value="CYL-ER-204">CYL-ER-204 (ER Bay 02)</option>
+                <option value="CYL-GW-302">CYL-GW-302 (General Ward Bed 12)</option>
+                <option value="CYL-REC-108">CYL-REC-108 (Recovery Bed 01)</option>
+                <option value="CYL-PED-044">CYL-PED-044 (Pediatrics Bed 05)</option>
+                <option value="CYL-TRANS-012">CYL-TRANS-012 (Transit Ambulance 03)</option>
+              </select>
+            </div>
             <a href="/api/export-csv" class="btn btn-primary" id="btn-export-csv" download>
               <i data-lucide="download"></i> Export CSV Report
             </a>
@@ -1142,8 +1169,11 @@
 
         <div class="card">
           <div class="card-header">
-            <h3>Recent Reading Logs</h3>
-            <span class="badge-tag">Synthetic Demo Logs</span>
+            <div>
+              <h3>Recent Reading Logs</h3>
+              <span class="text-xs text-muted" id="history-active-cyl-tag">Monitoring: CYL-ICU-101</span>
+            </div>
+            <span class="badge-tag" id="history-log-type-tag">Live Hardware Logs</span>
           </div>
           <div class="table-responsive">
             <table class="data-table" id="table-history-logs">

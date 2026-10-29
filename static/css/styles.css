@@ -3049,5 +3049,82 @@ body {
   }
 }
 
+/* ── 8. GLOBAL & HISTORY CYLINDER SELECTORS ────────────────────────────── */
+.header-cylinder-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 5px 10px;
+  margin-right: 4px;
+  transition: all 0.2s ease;
+}
+
+.dark .header-cylinder-selector {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+.header-cylinder-selector:hover {
+  border-color: var(--teal-primary);
+}
+
+.global-cylinder-dropdown {
+  background: transparent;
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #0f172a;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+}
+
+.dark .global-cylinder-dropdown {
+  color: #f1f5f9;
+  background-color: #1e293b;
+}
+
+.history-cyl-selector-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  transition: border-color 0.2s;
+}
+
+.dark .history-cyl-selector-wrap {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+.history-cyl-selector-wrap:hover {
+  border-color: var(--teal-primary);
+}
+
+.history-cylinder-dropdown {
+  background: transparent;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  cursor: pointer;
+  outline: none;
+}
+
+.dark .history-cylinder-dropdown {
+  color: #f8fafc;
+  background-color: #1e293b;
+}
+
 
 

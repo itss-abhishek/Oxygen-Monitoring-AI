@@ -507,8 +507,24 @@ document.addEventListener('DOMContentLoaded', () => {
       if (res.success) {
         activeCylinderId = res.active_cylinder_id;
 
+        // Synchronize all cylinder selector dropdowns
         const selectEl = document.getElementById('select-active-cylinder');
         if (selectEl) selectEl.value = activeCylinderId;
+
+        const globalSelect = document.getElementById('global-select-cylinder');
+        if (globalSelect) globalSelect.value = activeCylinderId;
+
+        const historySelect = document.getElementById('history-select-cylinder');
+        if (historySelect) historySelect.value = activeCylinderId;
+
+        const histTag = document.getElementById('history-active-cyl-tag');
+        if (histTag) histTag.textContent = `Monitoring: ${activeCylinderId}`;
+
+        const csvBtn = document.getElementById('btn-export-csv');
+        if (csvBtn) {
+          csvBtn.href = `/api/export-csv?cylinder_id=${encodeURIComponent(activeCylinderId)}`;
+          csvBtn.setAttribute('download', `oxysense_${activeCylinderId.toLowerCase()}_report.csv`);
+        }
 
         document.querySelectorAll('.btn-cyl-pill').forEach(btn => {
           if (btn.getAttribute('data-cyl') === activeCylinderId) {
@@ -519,6 +535,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         await pollLiveTelemetry();
+
+        // If currently in Historical Reports view, refresh the table
+        if (currentView === 'view-history') {
+          await loadHistoryTable();
+        }
+
         showToast(`Monitoring active cylinder: ${activeCylinderId}`);
       } else {
         showToast(`Failed to switch cylinder: ${res.error || 'Unknown error'}`);
@@ -528,8 +550,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Bind dropdown change
+  // Bind dropdown change handlers
   document.getElementById('select-active-cylinder')?.addEventListener('change', (e) => {
+    changeActiveCylinder(e.target.value);
+  });
+
+  document.getElementById('global-select-cylinder')?.addEventListener('change', (e) => {
+    changeActiveCylinder(e.target.value);
+  });
+
+  document.getElementById('history-select-cylinder')?.addEventListener('change', (e) => {
     changeActiveCylinder(e.target.value);
   });
 
@@ -1061,6 +1091,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // ═════════════════════════════════════════════════════════════════════════
   async function loadHistoryTable() {
     try {
+      const histSelect = document.getElementById('history-select-cylinder');
+      if (histSelect) histSelect.value = activeCylinderId;
+
+      const histTag = document.getElementById('history-active-cyl-tag');
+      if (histTag) histTag.textContent = `Monitoring: ${activeCylinderId}`;
+
+      const csvBtn = document.getElementById('btn-export-csv');
+      if (csvBtn) {
+        csvBtn.href = `/api/export-csv?cylinder_id=${encodeURIComponent(activeCylinderId)}`;
+        csvBtn.setAttribute('download', `oxysense_${activeCylinderId.toLowerCase()}_report.csv`);
+      }
+
       const data = await OxyAPI.getHistory('24h');
       renderHistoryRows(data.points);
     } catch (err) {

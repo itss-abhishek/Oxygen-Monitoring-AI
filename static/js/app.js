@@ -981,8 +981,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('btn-sim-reset')?.addEventListener('click', async () => {
-    await OxyAPI.triggerScenario('RESET');
-    showToast('Simulation: Restored to nominal baseline (160 Bar / 2320 PSI)');
+    const res = await OxyAPI.triggerScenario('RESET');
+    if (!res?.state?.device?.esp32_connected) {
+      showToast('Reset complete: ESP32 is offline (no simulation started)');
+    } else {
+      showToast('Reset to Normal: Telemetry nominal');
+    }
     pollLiveTelemetry();
     loadAlertsView();
   });

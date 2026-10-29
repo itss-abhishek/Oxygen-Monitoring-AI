@@ -233,9 +233,42 @@ def set_scenario():
     """Set simulation scenario: NORMAL, LOW_PRESSURE, SENSOR_DISCONNECTED, RESET"""
     data = request.get_json() or {}
     scenario = data.get("scenario", "RESET").upper()
+    now = datetime.now()
+    is_hw = bool(
+        telemetry_instance.hardware_active
+        and telemetry_instance.last_hardware_time
+        and (now - telemetry_instance.last_hardware_time).total_seconds() <= 3.5
+    )
+
     if scenario == "RESET":
-        telemetry_instance.hardware_active = False
-        telemetry_instance.config["simulation_mode"] = True
+        if not is_hw:
+            # Without physical ESP32, keep simulation OFF and dashboard stopped
+            telemetry_instance.simulation_scenario = "NORMAL"
+            telemetry_instance.config["simulation_mode"] = False
+            telemetry_instance.is_sensor_connected = False
+            telemetry_instance.hardware_active = False
+            telemetry_instance.current_pressure_bar = 0.0
+            telemetry_instance.current_flow_lpm = 0.0
+            for a in telemetry_instance.alerts:
+                a["acknowledged"] = True
+            return jsonify({
+                "success": True,
+                "scenario": "NORMAL",
+                "message": "Reset complete. No ESP32 connected — dashboard remains offline.",
+                "state": telemetry_instance.get_overview_payload()
+            })
+        else:
+            telemetry_instance.config["simulation_mode"] = False
+            telemetry_instance.simulation_scenario = "NORMAL"
+            for a in telemetry_instance.alerts:
+                a["acknowledged"] = True
+            return jsonify({
+                "success": True,
+                "scenario": "NORMAL",
+                "message": "Reset complete on active ESP32 telemetry.",
+                "state": telemetry_instance.get_overview_payload()
+            })
+
     telemetry_instance.set_scenario(scenario)
     return jsonify({
         "success": True,

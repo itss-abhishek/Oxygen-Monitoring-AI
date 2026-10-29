@@ -158,6 +158,29 @@ def list_cylinders():
 
     return jsonify({"cylinders": results, "total": len(results)})
 
+@app.route("/api/cylinders/active", methods=["GET", "POST"])
+def active_cylinder():
+    """Get or switch the active monitored cylinder on the overview dashboard."""
+    if request.method == "POST":
+        data = request.get_json() or {}
+        cyl_id = (data.get("cylinder_id") or "").strip().upper()
+        for c in MOCK_CYLINDERS:
+            if c["id"].upper() == cyl_id:
+                telemetry_instance.switch_active_cylinder(c)
+                return jsonify({
+                    "success": True,
+                    "active_cylinder_id": c["id"],
+                    "cylinder": c,
+                    "overview": telemetry_instance.get_overview_payload()
+                })
+        return jsonify({"success": False, "error": f"Cylinder {cyl_id} not found"}), 404
+
+    return jsonify({
+        "success": True,
+        "active_cylinder_id": telemetry_instance.config["cylinder_id"],
+        "overview": telemetry_instance.get_overview_payload()
+    })
+
 @app.route("/api/cylinders/<cyl_id>", methods=["GET"])
 def get_cylinder_detail(cyl_id):
     """Detailed view for cylinder modal."""

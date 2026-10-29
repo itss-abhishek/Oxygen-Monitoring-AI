@@ -19,6 +19,9 @@
  */
 
 #include <Arduino.h>
+#include "BluetoothSerial.h"
+
+BluetoothSerial SerialBT;
 
 // ------------------------------------------------------------------------------
 // Optional Wi-Fi Configuration (Set ENABLE_WIFI to true if using Wi-Fi)
@@ -67,6 +70,8 @@ const unsigned long SEND_INTERVAL_MS = 2000; // Send every 2 seconds
 // ------------------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
+  SerialBT.begin("OxySense-ESP32");
+  Serial.println("Bluetooth Serial started: OxySense-ESP32");
   pinMode(LED_PIN, OUTPUT);
   pinMode(SENSOR_PIN, INPUT);
 
@@ -132,8 +137,9 @@ void loop() {
     }
     json += "]}";
 
-    // 3. Output to USB Serial (Laptop Cable)
+    // 3. Output to USB Serial & Bluetooth Serial
     Serial.println(json);
+    SerialBT.println(json);
 
     // 4. Blink Status LED
     digitalWrite(LED_PIN, HIGH);

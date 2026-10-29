@@ -157,3 +157,26 @@ def test_auth_logout(client):
     res2 = client.get("/api/auth/session")
     assert res2.get_json()["authenticated"] is False
 
+def test_active_cylinder_switch(client):
+    # Get active cylinder (default)
+    res_get = client.get("/api/cylinders/active")
+    assert res_get.status_code == 200
+    assert "active_cylinder_id" in res_get.get_json()
+
+    # Switch active cylinder to CYL-ER-204
+    res_post = client.post("/api/cylinders/active", json={"cylinder_id": "CYL-ER-204"})
+    assert res_post.status_code == 200
+    data = res_post.get_json()
+    assert data["success"] is True
+    assert data["active_cylinder_id"] == "CYL-ER-204"
+
+    # Overview payload should now reflect CYL-ER-204
+    res_overview = client.get("/api/overview")
+    assert res_overview.status_code == 200
+    ov = res_overview.get_json()
+    assert ov["device"]["id"] == "CYL-ER-204"
+
+    # Switch back to CYL-ICU-101
+    client.post("/api/cylinders/active", json={"cylinder_id": "CYL-ICU-101"})
+
+

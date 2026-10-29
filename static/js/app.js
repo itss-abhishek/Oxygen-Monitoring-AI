@@ -498,8 +498,78 @@ document.addEventListener('DOMContentLoaded', () => {
   // ═════════════════════════════════════════════════════════════════════════
   // 8. DASHBOARD OVERVIEW METRICS RENDERING
   // ═════════════════════════════════════════════════════════════════════════
+  let activeCylinderId = 'CYL-ICU-101';
+
+  async function changeActiveCylinder(newCylId) {
+    if (!newCylId) return;
+    try {
+      const res = await OxyAPI.setActiveCylinder(newCylId);
+      if (res.success) {
+        activeCylinderId = res.active_cylinder_id;
+
+        const selectEl = document.getElementById('select-active-cylinder');
+        if (selectEl) selectEl.value = activeCylinderId;
+
+        document.querySelectorAll('.btn-cyl-pill').forEach(btn => {
+          if (btn.getAttribute('data-cyl') === activeCylinderId) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
+
+        await pollLiveTelemetry();
+        showToast(`Monitoring active cylinder: ${activeCylinderId}`);
+      } else {
+        showToast(`Failed to switch cylinder: ${res.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Error switching active cylinder:', err);
+    }
+  }
+
+  // Bind dropdown change
+  document.getElementById('select-active-cylinder')?.addEventListener('change', (e) => {
+    changeActiveCylinder(e.target.value);
+  });
+
+  // Bind quick pills click
+  document.querySelectorAll('.btn-cyl-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cyl = btn.getAttribute('data-cyl');
+      changeActiveCylinder(cyl);
+    });
+  });
+
   function renderOverviewMetrics(data) {
     if (!data) return;
+
+    // Active Cylinder Selector Bar sync
+    const cylTitle = document.getElementById('active-cyl-title');
+    const cylBadge = document.getElementById('active-cyl-status-badge');
+    const assignedWard = document.getElementById('val-assigned-ward');
+    const selectEl = document.getElementById('select-active-cylinder');
+
+    if (cylTitle && data.device) {
+      cylTitle.textContent = `${data.device.id} — ${data.device.ward}`;
+    }
+    if (assignedWard && data.device) {
+      assignedWard.textContent = `Assigned: ${data.device.ward}`;
+    }
+    if (cylBadge && data.status) {
+      cylBadge.textContent = data.status.label;
+      cylBadge.className = `status-pill-large ${data.status.badge_class}`;
+    }
+    if (selectEl && data.device && selectEl.value !== data.device.id) {
+      selectEl.value = data.device.id;
+    }
+    document.querySelectorAll('.btn-cyl-pill').forEach(btn => {
+      if (btn.getAttribute('data-cyl') === data.device.id) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
 
     // Clock & Connection
     const clockEl = document.getElementById('live-clock');
@@ -662,7 +732,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <td><strong>${c.ete}</strong></td>
           <td><span class="status-pill-large badge-${c.status.toLowerCase()}">${formatStatus(c.status)}</span></td>
           <td><small class="font-mono text-muted">${c.sensor_id}</small></td>
-          <td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-primary-sm btn-monitor-cyl" data-id="${c.id}" title="Monitor live pressure & flow on Overview">
+              <i data-lucide="radio" class="w-3.5 h-3.5"></i> Live
+            </button>
             <button class="btn btn-outline-sm btn-view-cyl-detail" data-id="${c.id}">
               Details
             </button>
@@ -671,10 +744,20 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(tr);
       });
 
+      // Bind quick monitor live triggers
+      document.querySelectorAll('.btn-monitor-cyl').forEach(b => {
+        b.addEventListener('click', async () => {
+          const id = b.getAttribute('data-id');
+          await changeActiveCylinder(id);
+          switchView('view-overview');
+        });
+      });
+
       // Bind modal detail triggers
       document.querySelectorAll('.btn-view-cyl-detail').forEach(b => {
         b.addEventListener('click', () => openCylinderModal(b.getAttribute('data-id')));
       });
+      if (window.lucide) lucide.createIcons();
     } catch (err) {
       console.error('Error loading cylinder fleet:', err);
     }
@@ -700,10 +783,22 @@ document.addEventListener('DOMContentLoaded', () => {
           <div><strong>Estimated Time Remaining:</strong><br><span style="font-size:1.1rem;font-weight:700;color:var(--teal-primary);">${c.ete}</span></div>
           <div><strong>Operational Status:</strong><br><span class="status-pill-large badge-${c.status.toLowerCase()}">${formatStatus(c.status)}</span></div>
         </div>
+        <div style="margin-bottom:16px;display:flex;justify-content:flex-end;">
+          <button class="btn btn-primary" id="btn-modal-monitor-live" data-id="${c.id}">
+            <i data-lucide="radio"></i> Monitor Live on Overview
+          </button>
+        </div>
         <div class="ete-disclaimer-box">
           <span>⚠️ All displayed telemetry metrics reflect software demonstration data. For real clinical decisions, inspect certified mechanical gauges.</span>
         </div>
       `;
+
+      document.getElementById('btn-modal-monitor-live')?.addEventListener('click', async () => {
+        await changeActiveCylinder(c.id);
+        document.getElementById('cylinder-modal').classList.remove('active');
+        switchView('view-overview');
+      });
+
       document.getElementById('cylinder-modal').classList.add('active');
       if (window.lucide) lucide.createIcons();
     } catch (err) {

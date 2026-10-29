@@ -29,6 +29,20 @@ const OxyAPI = {
     return res.json();
   },
 
+  async setActiveCylinder(cylinderId) {
+    const res = await fetch('/api/cylinders/active', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cylinder_id: cylinderId })
+    });
+    return res.json();
+  },
+
+  async getActiveCylinder() {
+    const res = await fetch('/api/cylinders/active');
+    return res.json();
+  },
+
   async getAlerts() {
     const res = await fetch('/api/alerts');
     return res.json();

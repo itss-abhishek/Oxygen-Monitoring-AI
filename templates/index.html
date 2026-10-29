@@ -594,6 +594,63 @@
       <!-- VIEW 1: OVERVIEW -->
       <!-- ═══════════════════════════════════════════════════════════════════ -->
       <main class="page-view active" id="view-overview">
+
+        <!-- ACTIVE CYLINDER SELECTOR BAR (Change Cylinder for Live Monitoring) -->
+        <div class="card active-cylinder-selector-bar">
+          <div class="active-cyl-main-info">
+            <div class="cyl-select-icon-pulse">
+              <i data-lucide="radio" class="w-5 h-5 text-cyan-500"></i>
+            </div>
+            <div class="cyl-select-text-group">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="cyl-select-eyebrow">MONITORED CYLINDER</span>
+                <span class="status-pill-large badge-normal" id="active-cyl-status-badge">NORMAL</span>
+                <span class="live-dot-pulse text-xs">● Live Telemetry</span>
+              </div>
+              <h2 class="cyl-select-title" id="active-cyl-title">CYL-ICU-101 &mdash; ICU &bull; Bed 04</h2>
+            </div>
+          </div>
+
+          <div class="active-cyl-controls">
+            <!-- Dropdown selector -->
+            <div class="cyl-dropdown-wrapper">
+              <label for="select-active-cylinder" class="text-xs font-semibold text-muted mb-1 block">Switch Monitored Cylinder:</label>
+              <div class="relative">
+                <select id="select-active-cylinder" class="form-select cyl-select-dropdown" aria-label="Select active cylinder">
+                  <option value="CYL-ICU-101">CYL-ICU-101 &bull; ICU &mdash; Bed 04</option>
+                  <option value="CYL-ER-204">CYL-ER-204 &bull; Emergency Dept &mdash; Trauma Bay 1</option>
+                  <option value="CYL-GW-302">CYL-GW-302 &bull; General Ward 2 &mdash; Bed 12</option>
+                  <option value="CYL-REC-108">CYL-REC-108 &bull; Post-Op Recovery &mdash; Bed 08</option>
+                  <option value="CYL-PED-044">CYL-PED-044 &bull; Pediatric Ward &mdash; Room 3</option>
+                  <option value="CYL-TRANS-012">CYL-TRANS-012 &bull; Ambulance Transit Bay</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Quick-Switch Pills for 1-Click Changing -->
+            <div class="cyl-quick-switch-pills" id="cyl-quick-pills">
+              <button type="button" class="btn-cyl-pill active" data-cyl="CYL-ICU-101" title="ICU Bed 04">
+                <span class="dot-status dot-normal"></span> ICU-101
+              </button>
+              <button type="button" class="btn-cyl-pill" data-cyl="CYL-ER-204" title="Emergency Dept">
+                <span class="dot-status dot-critical"></span> ER-204
+              </button>
+              <button type="button" class="btn-cyl-pill" data-cyl="CYL-GW-302" title="General Ward 2">
+                <span class="dot-status dot-normal"></span> GW-302
+              </button>
+              <button type="button" class="btn-cyl-pill" data-cyl="CYL-REC-108" title="Post-Op Recovery">
+                <span class="dot-status dot-critical"></span> REC-108
+              </button>
+              <button type="button" class="btn-cyl-pill" data-cyl="CYL-PED-044" title="Pediatric Ward">
+                <span class="dot-status dot-normal"></span> PED-044
+              </button>
+              <button type="button" class="btn-cyl-pill" data-cyl="CYL-TRANS-012" title="Ambulance Transit">
+                <span class="dot-status dot-normal"></span> TRANS-012
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- 4 Primary Metric Cards -->
         <div class="metrics-grid">
           
@@ -692,7 +749,7 @@
               <p class="status-caption" id="val-status-desc">All telemetry parameters within normal operational envelope.</p>
               
               <div class="metric-footer">
-                <span class="ref-label">Assigned: ICU — Bed 04</span>
+                <span class="ref-label" id="val-assigned-ward">Assigned: ICU — Bed 04</span>
                 <span class="ref-label" id="val-active-alerts-tag">0 Active Alerts</span>
               </div>
             </div>

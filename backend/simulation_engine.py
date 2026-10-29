@@ -105,16 +105,20 @@ class TelemetryState:
 
         self.is_sensor_connected = True
 
-        if self.simulation_scenario == "LOW_PRESSURE":
+        if not self.config.get("simulation_mode", True):
+            # Hardware mode: Values are controlled directly by ESP32 /api/telemetry
+            pass
+        elif self.simulation_scenario == "LOW_PRESSURE":
             # Rapid depletion to demo warning & critical
             self.current_pressure_bar = max(0.0, self.current_pressure_bar - random.uniform(3.5, 6.0))
         elif self.simulation_scenario == "NORMAL":
             # Gentle normal consumption
             self.current_pressure_bar = max(0.0, self.current_pressure_bar - random.uniform(0.15, 0.45))
 
-        # Flow fluctuates naturally around target
-        target_flow = self.config["prescribed_flow_lpm"]
-        self.current_flow_lpm = max(0.5, round(target_flow + random.gauss(0, 0.12), 2))
+        if self.config.get("simulation_mode", True):
+            # Flow fluctuates naturally around target only in simulation mode
+            target_flow = self.config["prescribed_flow_lpm"]
+            self.current_flow_lpm = max(0.5, round(target_flow + random.gauss(0, 0.12), 2))
 
         # Classify status & generate alert if threshold breached
         status = self.classify_status()["level"]
@@ -220,6 +224,41 @@ class TelemetryState:
         elif scenario == "NORMAL":
             self.simulation_scenario = "NORMAL"
             self.is_sensor_connected = True
+
+    def switch_active_cylinder(self, cylinder_dict: Dict[str, Any]):
+        """Switch the primary monitored cylinder in the telemetry state."""
+        self.config["cylinder_id"] = cylinder_dict["id"]
+        self.config["ward"] = cylinder_dict.get("ward", self.config["ward"])
+        self.config["cylinder_capacity_litres"] = float(cylinder_dict.get("capacity_l", 660.0))
+        self.config["prescribed_flow_lpm"] = float(cylinder_dict.get("flow_lpm", 2.0))
+        p_init = float(cylinder_dict.get("pressure_bar", 150.0))
+        if p_init <= 0:
+            p_init = 150.0
+        self.current_pressure_bar = p_init
+        self.current_flow_lpm = float(cylinder_dict.get("flow_lpm", 2.0))
+        self.is_sensor_connected = True
+        self.simulation_scenario = "NORMAL"
+        self.last_update = datetime.now()
+
+        # Seed chart history for this cylinder
+        now = datetime.now()
+        self.history = []
+        p = min(200.0, self.current_pressure_bar + 4.5)
+        for i in range(20, -1, -1):
+            ts = now - timedelta(minutes=i * 2)
+            p = max(0.0, p - 0.22)
+            self.history.append({
+                "timestamp": ts.strftime("%H:%M:%S"),
+                "iso_time": ts.isoformat(),
+                "pressure_bar": round(p, 1),
+                "pressure_psi": round(p * 14.5038, 0),
+                "flow_lpm": round(self.current_flow_lpm, 2),
+                "remaining_pct": round((p / self.config["max_pressure_bar"]) * 100, 1),
+                "ete_minutes": round(p * self.config["cylinder_capacity_litres"] / (200.0 * max(0.1, self.current_flow_lpm)) * 60, 1),
+                "status": self.classify_status()["level"]
+            })
+        self.history[-1]["pressure_bar"] = round(self.current_pressure_bar, 1)
+        self.history[-1]["pressure_psi"] = round(self.current_pressure_bar * 14.5038, 0)
 
     def calculate_ete(self) -> Dict[str, Any]:
         """Calculates Estimated Time to Empty and includes clinical disclaimer."""

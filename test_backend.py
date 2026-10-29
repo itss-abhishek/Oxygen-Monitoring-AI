@@ -17,7 +17,9 @@ def client():
         yield client
 
 def test_ete_calculation(test_state):
-    # 660 L capacity, 200 bar max. At 100 bar, remaining = 330 L. At 2 L/min -> 165 minutes.
+    test_state.is_sensor_connected = True
+    test_state.current_pressure_bar = 100.0
+    test_state.current_flow_lpm = 2.0
     ete = test_state.calculate_ete()
     assert ete["valid"] is True
     assert ete["hours"] >= 0
@@ -30,6 +32,7 @@ def test_ete_disconnected_sensor(test_state):
     assert ete["display"] == "Estimate unavailable"
 
 def test_status_classification(test_state):
+    test_state.is_sensor_connected = True
     test_state.current_pressure_bar = 160.0
     assert test_state.classify_status()["level"] == "NORMAL"
 
@@ -55,6 +58,9 @@ def test_simulation_scenarios(test_state):
     assert test_state.is_sensor_connected is True
 
 def test_ai_insights_rule_based(test_state):
+    test_state.is_sensor_connected = True
+    test_state.current_pressure_bar = 150.0
+    test_state.current_flow_lpm = 2.0
     insights = generate_ai_insights(test_state)
     assert "summary" in insights
     assert len(insights["operational_suggestions"]) > 0

@@ -557,8 +557,24 @@ document.addEventListener('DOMContentLoaded', () => {
       assignedWard.textContent = `Assigned: ${data.device.ward}`;
     }
     if (cylBadge && data.status) {
-      cylBadge.textContent = data.status.label;
-      cylBadge.className = `status-pill-large ${data.status.badge_class}`;
+      if (!data.device.esp32_connected) {
+        cylBadge.textContent = 'DISCONNECTED';
+        cylBadge.className = 'status-pill-large badge-disconnected';
+      } else {
+        cylBadge.textContent = data.status.label;
+        cylBadge.className = `status-pill-large ${data.status.badge_class}`;
+      }
+    }
+
+    const cylPulse = document.getElementById('active-cyl-pulse');
+    if (cylPulse) {
+      if (data.device.esp32_connected) {
+        cylPulse.className = 'live-dot-pulse text-xs';
+        cylPulse.textContent = '● Live Telemetry';
+      } else {
+        cylPulse.className = 'text-xs text-rose-500 font-bold';
+        cylPulse.textContent = '○ Hardware Stopped';
+      }
     }
     if (selectEl && data.device && selectEl.value !== data.device.id) {
       selectEl.value = data.device.id;
@@ -587,6 +603,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    const demoBadge = document.querySelector('.demo-badge');
+    if (demoBadge) {
+      if (!data.device.esp32_connected) {
+        demoBadge.className = 'demo-badge bg-rose-500/20 text-rose-500 border border-rose-500/30';
+        demoBadge.innerHTML = '<i data-lucide="wifi-off" class="icon-sm"></i> <span>ESP32 DISCONNECTED</span>';
+      } else if (data.device.data_source?.includes('HARDWARE')) {
+        demoBadge.className = 'demo-badge bg-emerald-500/20 text-emerald-500 border border-emerald-500/30';
+        demoBadge.innerHTML = '<i data-lucide="cpu" class="icon-sm"></i> <span>HARDWARE LIVE</span>';
+      } else {
+        demoBadge.className = 'demo-badge';
+        demoBadge.innerHTML = '<i data-lucide="flask-conical" class="icon-sm"></i> <span>DEMO MODE</span>';
+      }
+    }
+
     // Card A: Pressure
     const pVal = data.pressure.value;
     const pUnit = data.pressure.unit;
@@ -599,14 +629,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pSec) {
       pSec.textContent = data.device.esp32_connected
         ? `${data.pressure.bar} bar (${data.pressure.psi} PSI)`
-        : 'Telemetry Unavailable';
+        : 'ESP32 Disconnected (No Signal)';
     }
 
     const pFill = document.getElementById('pressure-progress');
     if (pFill) {
       const pPct = data.pressure.percentage || 0;
       pFill.style.width = `${Math.min(100, Math.max(0, pPct))}%`;
-      if (data.status.level === 'CRITICAL') {
+      if (!data.device.esp32_connected) {
+        pFill.style.background = '#64748b';
+      } else if (data.status.level === 'CRITICAL') {
         pFill.style.background = 'var(--status-critical)';
       } else if (data.status.level === 'LOW_PRESSURE') {
         pFill.style.background = 'var(--status-warning)';
@@ -622,12 +654,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const fFill = document.getElementById('flow-progress');
     const fDiff = document.getElementById('flow-diff-label');
 
-    if (fPri) fPri.textContent = data.device.esp32_connected ? fVal.toFixed(1) : '--';
-    if (fPres) fPres.textContent = `Prescribed: ${data.flow.prescribed.toFixed(1)} L/min`;
-    if (fFill) fFill.style.width = `${Math.min(100, (fVal / 10.0) * 100)}%`;
+    if (fPri) fPri.textContent = data.device.esp32_connected ? fVal.toFixed(1) : '0.0';
+    if (fPres) fPres.textContent = data.device.esp32_connected ? `Prescribed: ${data.flow.prescribed.toFixed(1)} L/min` : 'Flow: 0.0 L/min (Sensor Offline)';
+    if (fFill) fFill.style.width = data.device.esp32_connected ? `${Math.min(100, (fVal / 10.0) * 100)}%` : '0%';
     if (fDiff) {
-      const flowDiff = (fVal - data.flow.prescribed).toFixed(1);
-      fDiff.textContent = `${flowDiff > 0 ? '+' : ''}${flowDiff} L/min delta`;
+      if (data.device.esp32_connected) {
+        const flowDiff = (fVal - data.flow.prescribed).toFixed(1);
+        fDiff.textContent = `${flowDiff > 0 ? '+' : ''}${flowDiff} L/min delta`;
+      } else {
+        fDiff.textContent = 'Hardware Offline';
+      }
     }
 
     // Card C: ETE
@@ -652,15 +688,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const iconWrap = document.getElementById('status-icon-wrap');
     const statusDesc = document.getElementById('val-status-desc');
     if (iconWrap && statusDesc) {
-      if (data.status.level === 'CRITICAL') {
+      if (!data.device.esp32_connected || data.status.level === 'SENSOR_DISCONNECTED') {
+        iconWrap.className = 'icon-wrap gray';
+        statusDesc.textContent = 'ESP32 disconnected or offline. Connect ESP32 via USB or Bluetooth to resume live telemetry.';
+      } else if (data.status.level === 'CRITICAL') {
         iconWrap.className = 'icon-wrap red';
         statusDesc.textContent = 'Urgent: Reserve nearing exhaustion. Stage replacement cylinder.';
       } else if (data.status.level === 'LOW_PRESSURE') {
         iconWrap.className = 'icon-wrap orange';
         statusDesc.textContent = 'Warning: Pressure below configured clinical threshold.';
-      } else if (data.status.level === 'SENSOR_DISCONNECTED') {
-        iconWrap.className = 'icon-wrap gray';
-        statusDesc.textContent = 'Notice: Hardware communication interrupted or node offline.';
       } else {
         iconWrap.className = 'icon-wrap green';
         statusDesc.textContent = 'All telemetry parameters within normal operational envelope.';

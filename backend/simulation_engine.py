@@ -28,8 +28,8 @@ DEFAULT_CONFIG = {
     "warning_threshold_bar": 50.0,       # ~725 PSI
     "critical_threshold_bar": 20.0,      # ~290 PSI
     "pressure_unit": "PSI",              # "PSI" or "BAR"
-    "sensor_status": "ONLINE",           # "ONLINE" or "DISCONNECTED"
-    "simulation_mode": True,
+    "sensor_status": "DISCONNECTED",     # Default to DISCONNECTED without physical ESP32
+    "simulation_mode": False,            # Default to False: physical ESP32 required!
 }
 
 # ---------------------------------------------------------------------------
@@ -37,19 +37,18 @@ DEFAULT_CONFIG = {
 # ---------------------------------------------------------------------------
 
 class TelemetryState:
-    """Represents live telemetry state, capable of switching between simulated and hardware input."""
+    """Represents live telemetry state, requiring physical ESP32 input by default."""
     def __init__(self):
         self.config = dict(DEFAULT_CONFIG)
-        self.current_pressure_bar = 155.0  # ~2248 PSI
-        self.current_flow_lpm = 2.0
-        self.is_sensor_connected = True
+        self.current_pressure_bar = 0.0
+        self.current_flow_lpm = 0.0
+        self.is_sensor_connected = False
         self.hardware_active = False
         self.last_hardware_time = None
         self.last_update = datetime.now()
         self.simulation_scenario = "NORMAL"  # "NORMAL", "LOW_PRESSURE", "SENSOR_DISCONNECTED"
         self.history: List[Dict[str, Any]] = []
         self.alerts: List[Dict[str, Any]] = []
-        self._init_mock_history()
         self._init_default_alerts()
 
     def _init_mock_history(self):
@@ -97,7 +96,7 @@ class TelemetryState:
         return remaining_litres / flow_lpm
 
     def tick_simulation(self):
-        """Advances the software simulation by one time step."""
+        """Advances the telemetry state based strictly on ESP32 hardware presence."""
         now = datetime.now()
         self.last_update = now
 
@@ -105,38 +104,65 @@ class TelemetryState:
             self.is_sensor_connected = False
             return
 
-        # Hardware connection timeout detection (5 seconds without packets)
-        if self.hardware_active:
-            if self.last_hardware_time and (now - self.last_hardware_time).total_seconds() > 5.0:
-                self.is_sensor_connected = False
+        # Check real hardware connection (ESP32 via serial_bridge)
+        if self.hardware_active and self.last_hardware_time:
+            # If received packet within the last 3.5 seconds, mark hardware connected
+            if (now - self.last_hardware_time).total_seconds() <= 3.5:
+                self.is_sensor_connected = True
+                status = self.classify_status()["level"]
+                ete = self.calculate_ete()
+                self._check_automatic_alerts(status)
+                # Append live point to history
+                self.history.append({
+                    "timestamp": now.strftime("%H:%M:%S"),
+                    "iso_time": now.isoformat(),
+                    "pressure_bar": round(self.current_pressure_bar, 1),
+                    "pressure_psi": round(self.current_pressure_bar * 14.5038, 0),
+                    "flow_lpm": round(self.current_flow_lpm, 2),
+                    "remaining_pct": round((self.current_pressure_bar / self.config["max_pressure_bar"]) * 100, 1),
+                    "ete_minutes": round(ete["minutes"], 1) if ete["valid"] else 0,
+                    "status": status
+                })
+                if len(self.history) > 60:
+                    self.history.pop(0)
                 return
             else:
-                self.is_sensor_connected = True
+                # Hardware packet timed out (ESP32 UNPLUGGED OR REMOVED!)
+                # STOP EVERYTHING IMMEDIATELY
+                self.is_sensor_connected = False
+                self.hardware_active = False
                 return
 
-        self.is_sensor_connected = True
-
-        if not self.config.get("simulation_mode", True):
-            # Hardware mode: Values are controlled directly by ESP32 /api/telemetry
-            pass
-        elif self.simulation_scenario == "LOW_PRESSURE":
-            # Rapid depletion to demo warning & critical
-            self.current_pressure_bar = max(0.0, self.current_pressure_bar - random.uniform(3.5, 6.0))
-        elif self.simulation_scenario == "NORMAL":
-            # Gentle normal consumption
-            self.current_pressure_bar = max(0.0, self.current_pressure_bar - random.uniform(0.15, 0.45))
-
-        if self.config.get("simulation_mode", True):
-            # Flow fluctuates naturally around target only in simulation mode
+        # If user explicitly turned on simulation via Demonstration panel
+        if self.config.get("simulation_mode", False):
+            self.is_sensor_connected = True
+            if self.simulation_scenario == "LOW_PRESSURE":
+                self.current_pressure_bar = max(0.0, self.current_pressure_bar - random.uniform(3.5, 6.0))
+            elif self.simulation_scenario == "NORMAL":
+                self.current_pressure_bar = max(0.0, self.current_pressure_bar - random.uniform(0.15, 0.45))
             target_flow = self.config["prescribed_flow_lpm"]
             self.current_flow_lpm = max(0.5, round(target_flow + random.gauss(0, 0.12), 2))
-
-        # Classify status & generate alert if threshold breached
-        status = self.classify_status()["level"]
-        ete = self.calculate_ete()
-
-        # Check for alerts
-        self._check_automatic_alerts(status)
+            status = self.classify_status()["level"]
+            ete = self.calculate_ete()
+            self._check_automatic_alerts(status)
+            self.history.append({
+                "timestamp": now.strftime("%H:%M:%S"),
+                "iso_time": now.isoformat(),
+                "pressure_bar": round(self.current_pressure_bar, 1),
+                "pressure_psi": round(self.current_pressure_bar * 14.5038, 0),
+                "flow_lpm": round(self.current_flow_lpm, 2),
+                "remaining_pct": round((self.current_pressure_bar / self.config["max_pressure_bar"]) * 100, 1),
+                "ete_minutes": round(ete["minutes"], 1) if ete["valid"] else 0,
+                "status": status
+            })
+            if len(self.history) > 60:
+                self.history.pop(0)
+        else:
+            # HARDWARE REQUIRED: Without ESP32 hardware packet, STOP EVERYTHING AND SHOW DISCONNECTED!
+            self.is_sensor_connected = False
+            self.current_pressure_bar = 0.0
+            self.current_flow_lpm = 0.0
+            return
 
         # Append to live history (keep last 60 points)
         self.history.append({
@@ -196,6 +222,7 @@ class TelemetryState:
         now_str = datetime.now().strftime("%H:%M:%S")
         if scenario == "RESET":
             self.simulation_scenario = "NORMAL"
+            self.config["simulation_mode"] = True
             self.is_sensor_connected = True
             self.current_pressure_bar = 160.0
             self.current_flow_lpm = self.config["prescribed_flow_lpm"]
@@ -211,6 +238,7 @@ class TelemetryState:
             })
         elif scenario == "LOW_PRESSURE":
             self.simulation_scenario = "LOW_PRESSURE"
+            self.config["simulation_mode"] = True
             self.is_sensor_connected = True
             self.current_pressure_bar = 42.0  # triggers warning threshold
             self.alerts.insert(0, {
@@ -222,6 +250,12 @@ class TelemetryState:
                 "acknowledged": False
             })
         elif scenario == "SENSOR_DISCONNECTED":
+            self.simulation_scenario = "SENSOR_DISCONNECTED"
+            self.config["simulation_mode"] = False
+            self.is_sensor_connected = False
+            self.hardware_active = False
+            self.current_pressure_bar = 0.0
+            self.current_flow_lpm = 0.0
             self.simulation_scenario = "SENSOR_DISCONNECTED"
             self.is_sensor_connected = False
             self.alerts.insert(0, {
@@ -364,10 +398,32 @@ class TelemetryState:
             else self.config["max_pressure_bar"]
         )
 
-        if self.hardware_active:
-            data_source = "HARDWARE (ESP32 Live)" if self.is_sensor_connected else "HARDWARE (Disconnected)"
+        if not self.is_sensor_connected:
+            data_source = "HARDWARE (Disconnected — No ESP32)"
+            pressure_val = 0
+            pressure_bar = 0.0
+            pressure_psi = 0
+            percentage = 0
+        elif self.hardware_active:
+            data_source = "HARDWARE (ESP32 Live)"
+            pressure_val = (
+                round(self.current_pressure_bar * 14.5038, 0)
+                if unit == "PSI"
+                else round(self.current_pressure_bar, 1)
+            )
+            pressure_bar = round(self.current_pressure_bar, 1)
+            pressure_psi = round(self.current_pressure_bar * 14.5038, 0)
+            percentage = round((self.current_pressure_bar / self.config["max_pressure_bar"]) * 100, 1)
         else:
             data_source = "SIMULATION (Synthetic Stream)"
+            pressure_val = (
+                round(self.current_pressure_bar * 14.5038, 0)
+                if unit == "PSI"
+                else round(self.current_pressure_bar, 1)
+            )
+            pressure_bar = round(self.current_pressure_bar, 1)
+            pressure_psi = round(self.current_pressure_bar * 14.5038, 0)
+            percentage = round((self.current_pressure_bar / self.config["max_pressure_bar"]) * 100, 1)
 
         return {
             "device": {
@@ -382,11 +438,11 @@ class TelemetryState:
             "pressure": {
                 "value": pressure_val,
                 "unit": unit,
-                "bar": round(self.current_pressure_bar, 1),
-                "psi": round(self.current_pressure_bar * 14.5038, 0),
+                "bar": pressure_bar,
+                "psi": pressure_psi,
                 "max": max_pressure_val,
-                "percentage": round((self.current_pressure_bar / self.config["max_pressure_bar"]) * 100, 1) if self.is_sensor_connected else 0,
-                "trend": "decreasing" if self.simulation_scenario in ["NORMAL", "LOW_PRESSURE"] else "stable"
+                "percentage": percentage,
+                "trend": "decreasing" if (self.is_sensor_connected and self.simulation_scenario in ["NORMAL", "LOW_PRESSURE"]) else "stable"
             },
             "flow": {
                 "value": self.current_flow_lpm if self.is_sensor_connected else 0.0,

@@ -43,6 +43,8 @@ class TelemetryState:
         self.current_pressure_bar = 155.0  # ~2248 PSI
         self.current_flow_lpm = 2.0
         self.is_sensor_connected = True
+        self.hardware_active = False
+        self.last_hardware_time = None
         self.last_update = datetime.now()
         self.simulation_scenario = "NORMAL"  # "NORMAL", "LOW_PRESSURE", "SENSOR_DISCONNECTED"
         self.history: List[Dict[str, Any]] = []
@@ -102,6 +104,15 @@ class TelemetryState:
         if self.simulation_scenario == "SENSOR_DISCONNECTED":
             self.is_sensor_connected = False
             return
+
+        # Hardware connection timeout detection (5 seconds without packets)
+        if self.hardware_active:
+            if self.last_hardware_time and (now - self.last_hardware_time).total_seconds() > 5.0:
+                self.is_sensor_connected = False
+                return
+            else:
+                self.is_sensor_connected = True
+                return
 
         self.is_sensor_connected = True
 
@@ -353,6 +364,11 @@ class TelemetryState:
             else self.config["max_pressure_bar"]
         )
 
+        if self.hardware_active:
+            data_source = "HARDWARE (ESP32 Live)" if self.is_sensor_connected else "HARDWARE (Disconnected)"
+        else:
+            data_source = "SIMULATION (Synthetic Stream)"
+
         return {
             "device": {
                 "id": self.config["cylinder_id"],
@@ -360,7 +376,7 @@ class TelemetryState:
                 "esp32_connected": self.is_sensor_connected,
                 "pressure_sensor_status": "OK" if self.is_sensor_connected else "FAULT",
                 "flow_sensor_status": "OK" if self.is_sensor_connected else "FAULT",
-                "data_source": "SIMULATION (Synthetic Stream)",
+                "data_source": data_source,
                 "last_update": self.last_update.strftime("%H:%M:%S")
             },
             "pressure": {

@@ -580,10 +580,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pill && pillText) {
       if (data.device.esp32_connected) {
         pill.className = 'status-pill online';
-        pillText.textContent = 'ESP32 Connected (Simulated)';
+        pillText.textContent = data.device.data_source?.includes('HARDWARE') ? 'ESP32 Hardware Online' : 'ESP32 Connected (Simulated)';
       } else {
         pill.className = 'status-pill offline';
-        pillText.textContent = 'Sensor Disconnected';
+        pillText.textContent = 'ESP32 Disconnected (Offline)';
       }
     }
 

@@ -221,6 +221,9 @@ def set_scenario():
     """Set simulation scenario: NORMAL, LOW_PRESSURE, SENSOR_DISCONNECTED, RESET"""
     data = request.get_json() or {}
     scenario = data.get("scenario", "RESET").upper()
+    if scenario == "RESET":
+        telemetry_instance.hardware_active = False
+        telemetry_instance.config["simulation_mode"] = True
     telemetry_instance.set_scenario(scenario)
     return jsonify({
         "success": True,
@@ -344,6 +347,8 @@ def ingest_hardware_telemetry():
             telemetry_instance.current_pressure_bar = p_bar
             telemetry_instance.current_flow_lpm = f_lpm
             telemetry_instance.is_sensor_connected = True
+            telemetry_instance.hardware_active = True
+            telemetry_instance.last_hardware_time = datetime.now()
             telemetry_instance.config["simulation_mode"] = False
             telemetry_instance.last_update = datetime.now()
 

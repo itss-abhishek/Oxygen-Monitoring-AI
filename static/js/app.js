@@ -597,6 +597,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.device.esp32_connected) {
         pill.className = 'status-pill online';
         pillText.textContent = data.device.data_source?.includes('HARDWARE') ? 'ESP32 Hardware Online' : 'ESP32 Connected (Simulated)';
+      } else if (data.hardware_bridge && data.hardware_bridge.status === 'busy') {
+        pill.className = 'status-pill warning';
+        pillText.textContent = `${data.hardware_bridge.detected_port} Busy: Close Arduino Serial Monitor`;
       } else {
         pill.className = 'status-pill offline';
         pillText.textContent = 'ESP32 Disconnected (Offline)';
@@ -605,7 +608,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const demoBadge = document.querySelector('.demo-badge');
     if (demoBadge) {
-      if (!data.device.esp32_connected) {
+      if (data.hardware_bridge && data.hardware_bridge.status === 'busy') {
+        demoBadge.className = 'demo-badge bg-amber-500/20 text-amber-400 border border-amber-500/30';
+        demoBadge.innerHTML = '<i data-lucide="alert-triangle" class="icon-sm"></i> <span>PORT BUSY (CLOSE ARDUINO IDE)</span>';
+      } else if (!data.device.esp32_connected) {
         demoBadge.className = 'demo-badge bg-rose-500/20 text-rose-500 border border-rose-500/30';
         demoBadge.innerHTML = '<i data-lucide="wifi-off" class="icon-sm"></i> <span>ESP32 DISCONNECTED</span>';
       } else if (data.device.data_source?.includes('HARDWARE')) {
@@ -688,7 +694,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const iconWrap = document.getElementById('status-icon-wrap');
     const statusDesc = document.getElementById('val-status-desc');
     if (iconWrap && statusDesc) {
-      if (!data.device.esp32_connected || data.status.level === 'SENSOR_DISCONNECTED') {
+      if (data.hardware_bridge && data.hardware_bridge.status === 'busy') {
+        iconWrap.className = 'icon-wrap orange';
+        statusDesc.textContent = `${data.hardware_bridge.detected_port} is busy. Close the Serial Monitor tab in Arduino IDE to auto-connect.`;
+      } else if (!data.device.esp32_connected || data.status.level === 'SENSOR_DISCONNECTED') {
         iconWrap.className = 'icon-wrap gray';
         statusDesc.textContent = 'ESP32 disconnected or offline. Connect ESP32 via USB or Bluetooth to resume live telemetry.';
       } else if (data.status.level === 'CRITICAL') {

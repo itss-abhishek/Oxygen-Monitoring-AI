@@ -119,10 +119,20 @@ void loop() {
       if (fleet[0].pressure_bar < 20.0) fleet[0].pressure_bar = 160.0;
     }
 
-    // Gentle realistic jitter on secondary cylinders
-    fleet[1].pressure_bar += ((random(0, 10) - 5) / 10.0);
-    fleet[2].pressure_bar += ((random(0, 10) - 5) / 10.0);
-    fleet[3].pressure_bar -= 0.02; if (fleet[3].pressure_bar < 10.0) fleet[3].pressure_bar = 22.0;
+    // Gentle realistic physiological oscillation on fleet cylinders with strict clinical bounds
+    float jitter1 = (float)(random(-2, 3)) / 10.0;
+    fleet[1].pressure_bar = constrain(fleet[1].pressure_bar + jitter1, 35.0, 48.0); // Emergency Bay (Low Supply 35-48 Bar)
+
+    float jitter2 = (float)(random(-2, 3)) / 10.0;
+    fleet[2].pressure_bar = constrain(fleet[2].pressure_bar + jitter2, 175.0, 195.0); // General Ward (Nominal 175-195 Bar)
+
+    fleet[3].pressure_bar -= 0.02; 
+    if (fleet[3].pressure_bar < 12.0) fleet[3].pressure_bar = 22.0; // Post-Op Recovery (Critical 12-22 Bar)
+
+    // Safety guard: ensure every cylinder in fleet is strictly non-negative
+    for (int i = 0; i < 6; i++) {
+      if (fleet[i].pressure_bar < 0.0) fleet[i].pressure_bar = 0.0;
+    }
 
     // 2. Build Multi-Cylinder JSON Payload
     String json = "{\"cylinders\":[";

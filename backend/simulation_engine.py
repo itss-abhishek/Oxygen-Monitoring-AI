@@ -9,6 +9,7 @@ Contains:
 """
 
 import os
+import math
 import random
 import time
 from datetime import datetime, timedelta
@@ -112,13 +113,21 @@ class TelemetryState:
                 status = self.classify_status()["level"]
                 ete = self.calculate_ete()
                 self._check_automatic_alerts(status)
+
+                # Realistic clinical respiratory oscillation and micro-variations
+                t_sec = time.time()
+                flow_ripple = (0.09 * math.sin(t_sec * 2.2) + random.uniform(-0.02, 0.02)) if self.current_flow_lpm > 0 else 0.0
+                instant_flow = max(0.1, round(self.current_flow_lpm + flow_ripple, 2)) if self.current_flow_lpm > 0 else 0.0
+                press_jitter = 0.04 * math.sin(t_sec * 1.1) + random.uniform(-0.02, 0.02)
+                instant_p_bar = max(0.0, round(self.current_pressure_bar + press_jitter, 2))
+
                 # Append live point to history
                 self.history.append({
                     "timestamp": now.strftime("%H:%M:%S"),
                     "iso_time": now.isoformat(),
                     "pressure_bar": round(self.current_pressure_bar, 1),
-                    "pressure_psi": round(self.current_pressure_bar * 14.5038, 0),
-                    "flow_lpm": round(self.current_flow_lpm, 2),
+                    "pressure_psi": round(instant_p_bar * 14.5038, 0),
+                    "flow_lpm": instant_flow,
                     "remaining_pct": round((self.current_pressure_bar / self.config["max_pressure_bar"]) * 100, 1),
                     "ete_minutes": round(ete["minutes"], 1) if ete["valid"] else 0,
                     "status": status
@@ -285,25 +294,29 @@ class TelemetryState:
         self.simulation_scenario = "NORMAL"
         self.last_update = datetime.now()
 
-        # Seed chart history for this cylinder
+        # Seed chart history for this cylinder with realistic dynamic curve
         now = datetime.now()
         self.history = []
-        p = min(200.0, self.current_pressure_bar + 4.5)
-        for i in range(20, -1, -1):
-            ts = now - timedelta(minutes=i * 2)
-            p = max(0.0, p - 0.22)
+        p = min(200.0, self.current_pressure_bar + 4.2)
+        base_flow = self.current_flow_lpm
+        for i in range(25, -1, -1):
+            ts = now - timedelta(seconds=i * 5)
+            p = max(0.0, p - 0.16)
+            flow_sample = max(0.1, round(base_flow + 0.11 * math.sin(i * 0.75) + random.uniform(-0.03, 0.03), 2)) if base_flow > 0 else 0.0
+            p_sample = max(0.0, round(p + 0.06 * math.cos(i * 0.5), 1))
             self.history.append({
                 "timestamp": ts.strftime("%H:%M:%S"),
                 "iso_time": ts.isoformat(),
-                "pressure_bar": round(p, 1),
-                "pressure_psi": round(p * 14.5038, 0),
-                "flow_lpm": round(self.current_flow_lpm, 2),
-                "remaining_pct": round((p / self.config["max_pressure_bar"]) * 100, 1),
-                "ete_minutes": round(p * self.config["cylinder_capacity_litres"] / (200.0 * max(0.1, self.current_flow_lpm)) * 60, 1),
+                "pressure_bar": p_sample,
+                "pressure_psi": round(p_sample * 14.5038, 0),
+                "flow_lpm": flow_sample,
+                "remaining_pct": round((p_sample / self.config["max_pressure_bar"]) * 100, 1),
+                "ete_minutes": round(p_sample * self.config["cylinder_capacity_litres"] / (200.0 * max(0.1, flow_sample)) * 60, 1),
                 "status": self.classify_status()["level"]
             })
         self.history[-1]["pressure_bar"] = round(self.current_pressure_bar, 1)
         self.history[-1]["pressure_psi"] = round(self.current_pressure_bar * 14.5038, 0)
+        self.history[-1]["flow_lpm"] = round(self.current_flow_lpm, 2)
 
     def calculate_ete(self) -> Dict[str, Any]:
         """Calculates Estimated Time to Empty and includes clinical disclaimer."""
@@ -314,6 +327,18 @@ class TelemetryState:
                 "hours": 0,
                 "minutes": 0,
                 "reason": "Sensor is disconnected or offline."
+            }
+
+        if self.current_pressure_bar <= 0.0:
+            return {
+                "valid": True,
+                "display": "0h 00m (Exhausted)",
+                "hours": 0,
+                "minutes": 0.0,
+                "remaining_litres": 0.0,
+                "reason": "Cylinder is completely empty. Immediate cylinder replacement required.",
+                "formula": "Remaining Litres = 0 L",
+                "disclaimer": "⚠️ Cylinder depleted."
             }
 
         mins = self._calc_ete_minutes(
@@ -386,11 +411,12 @@ class TelemetryState:
         status = self.classify_status()
         ete = self.calculate_ete()
         unit = self.config.get("pressure_unit", "PSI")
+        safe_p_bar = max(0.0, self.current_pressure_bar)
         
         pressure_val = (
-            round(self.current_pressure_bar * 14.5038, 0)
+            round(safe_p_bar * 14.5038, 0)
             if unit == "PSI"
-            else round(self.current_pressure_bar, 1)
+            else round(safe_p_bar, 1)
         )
         max_pressure_val = (
             round(self.config["max_pressure_bar"] * 14.5038, 0)
@@ -407,23 +433,23 @@ class TelemetryState:
         elif self.hardware_active:
             data_source = "HARDWARE (ESP32 Live)"
             pressure_val = (
-                round(self.current_pressure_bar * 14.5038, 0)
+                round(safe_p_bar * 14.5038, 0)
                 if unit == "PSI"
-                else round(self.current_pressure_bar, 1)
+                else round(safe_p_bar, 1)
             )
-            pressure_bar = round(self.current_pressure_bar, 1)
-            pressure_psi = round(self.current_pressure_bar * 14.5038, 0)
-            percentage = round((self.current_pressure_bar / self.config["max_pressure_bar"]) * 100, 1)
+            pressure_bar = round(safe_p_bar, 1)
+            pressure_psi = round(safe_p_bar * 14.5038, 0)
+            percentage = round((safe_p_bar / self.config["max_pressure_bar"]) * 100, 1)
         else:
             data_source = "SIMULATION (Synthetic Stream)"
             pressure_val = (
-                round(self.current_pressure_bar * 14.5038, 0)
+                round(safe_p_bar * 14.5038, 0)
                 if unit == "PSI"
-                else round(self.current_pressure_bar, 1)
+                else round(safe_p_bar, 1)
             )
-            pressure_bar = round(self.current_pressure_bar, 1)
-            pressure_psi = round(self.current_pressure_bar * 14.5038, 0)
-            percentage = round((self.current_pressure_bar / self.config["max_pressure_bar"]) * 100, 1)
+            pressure_bar = round(safe_p_bar, 1)
+            pressure_psi = round(safe_p_bar * 14.5038, 0)
+            percentage = round((safe_p_bar / self.config["max_pressure_bar"]) * 100, 1)
 
         return {
             "device": {

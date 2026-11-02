@@ -8,12 +8,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Tailwind CSS CDN (ui-styling) -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Offline-First Local Vendor Libraries (with CDN fallback) -->
+  <script src="/static/js/vendor/chart.umd.min.js"></script>
+  <script>window.Chart || document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>')</script>
+  <script src="/static/js/vendor/lucide.min.js"></script>
+  <script>window.lucide || document.write('<script src="https://unpkg.com/lucide@latest"><\/script>')</script>
+  <script src="/static/js/vendor/tailwindcss.js"></script>
+  <script>window.tailwind || document.write('<script src="https://cdn.tailwindcss.com"><\/script>')</script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -71,7 +72,9 @@
     <div class="splash-card">
       <div class="splash-logo-wrap">
         <div class="splash-icon-pulse">
-          <i data-lucide="activity" class="splash-icon"></i>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="splash-icon">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
         </div>
       </div>
       <h1 class="splash-title">OxySense</h1>
@@ -92,7 +95,9 @@
       <div class="home-nav-container">
         <a href="#screen-home" class="home-brand" id="brand-home-link">
           <div class="logo-icon-wrap">
-            <i data-lucide="activity" class="icon-brand"></i>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon-brand">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
           </div>
           <div class="brand-text">
             <h2>OxySense</h2>
@@ -305,7 +310,9 @@
         <div class="footer-brand-col">
           <div class="brand-logo">
             <div class="logo-icon-wrap">
-              <i data-lucide="activity" class="icon-brand"></i>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon-brand">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+              </svg>
             </div>
             <div class="brand-text">
               <h2>OxySense</h2>
@@ -347,7 +354,9 @@
           </button>
           <div class="login-brand">
             <div class="logo-icon-wrap">
-              <i data-lucide="activity" class="icon-brand"></i>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon-brand">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+              </svg>
             </div>
             <h2>OxySense</h2>
           </div>
@@ -429,7 +438,9 @@
       <div class="sidebar-header">
         <div class="brand-logo">
           <div class="logo-icon-wrap">
-            <i data-lucide="activity" class="icon-brand"></i>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon-brand">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
           </div>
           <div class="brand-text">
             <h2>OxySense</h2>
@@ -515,20 +526,6 @@
         </div>
 
         <div class="header-right">
-          <!-- Active Monitored Cylinder Selector (Global) -->
-          <div class="header-cylinder-selector" title="Select Monitored Cylinder">
-            <i data-lucide="gauge" class="icon-sm text-cyan-500"></i>
-            <span class="text-xs font-semibold text-muted">Cylinder:</span>
-            <select id="global-select-cylinder" class="global-cylinder-dropdown" aria-label="Select Monitored Cylinder">
-              <option value="CYL-ICU-101">CYL-ICU-101 (ICU Bed 04)</option>
-              <option value="CYL-ER-204">CYL-ER-204 (ER Bay 02)</option>
-              <option value="CYL-GW-302">CYL-GW-302 (General Ward Bed 12)</option>
-              <option value="CYL-REC-108">CYL-REC-108 (Recovery Bed 01)</option>
-              <option value="CYL-PED-044">CYL-PED-044 (Pediatrics Bed 05)</option>
-              <option value="CYL-TRANS-012">CYL-TRANS-012 (Transit Ambulance 03)</option>
-            </select>
-          </div>
-
           <!-- Connection Status Pill -->
           <div class="status-pill online" id="esp32-status-pill">
             <span class="status-dot"></span>
@@ -1148,7 +1145,7 @@
             <p class="text-muted">Export verified logs and examine consumption patterns.</p>
           </div>
           <div class="header-actions">
-            <!-- Cylinder Selector for History View -->
+            <!-- Cylinder Selector -->
             <div class="history-cyl-selector-wrap">
               <i data-lucide="gauge" class="icon-sm text-cyan-500"></i>
               <label for="history-select-cylinder">Cylinder:</label>
@@ -1161,6 +1158,7 @@
                 <option value="CYL-TRANS-012">CYL-TRANS-012 (Transit Ambulance 03)</option>
               </select>
             </div>
+
             <a href="/api/export-csv" class="btn btn-primary" id="btn-export-csv" download>
               <i data-lucide="download"></i> Export CSV Report
             </a>
@@ -1173,7 +1171,10 @@
               <h3>Recent Reading Logs</h3>
               <span class="text-xs text-muted" id="history-active-cyl-tag">Monitoring: CYL-ICU-101</span>
             </div>
-            <span class="badge-tag" id="history-log-type-tag">Live Hardware Logs</span>
+            <div class="flex items-center gap-2">
+              <span class="badge-tag" id="history-total-count-badge">Total Database: ...</span>
+              <span class="badge-tag" id="history-log-type-tag">Live Hardware Logs</span>
+            </div>
           </div>
           <div class="table-responsive">
             <table class="data-table" id="table-history-logs">

@@ -3,8 +3,11 @@ test_backend.py — Unit tests for OxySense Backend and Simulation Engine.
 """
 
 import pytest
+from datetime import datetime, timedelta
 from backend.simulation_engine import TelemetryState, generate_ai_insights
 from backend.app import app
+from backend.models import db, Cylinder, Telemetry, Alert
+from backend.database import seed_initial_cylinders, prune_telemetry_older_than
 
 @pytest.fixture
 def test_state():
@@ -184,5 +187,177 @@ def test_active_cylinder_switch(client):
 
     # Switch back to CYL-ICU-101
     client.post("/api/cylinders/active", json={"cylinder_id": "CYL-ICU-101"})
+
+
+def test_database_models_and_schema():
+    """Verify SQLite database schema, tables, and sample cylinder seed data."""
+    with app.app_context():
+        cylinders = Cylinder.query.all()
+        assert len(cylinders) >= 6
+
+        sample_ids = {
+            "CYL-ICU-101", "CYL-ER-204", "CYL-GW-302",
+            "CYL-REC-108", "CYL-PED-044", "CYL-TRANS-012"
+        }
+        db_ids = {c.cylinder_id for c in cylinders}
+        for expected_id in sample_ids:
+            assert expected_id in db_ids
+
+        # Verify simulated flag and data source
+        for c in cylinders:
+            if c.cylinder_id in sample_ids:
+                assert c.is_simulated is True
+                assert c.data_source == "SIMULATED_DEMO"
+                assert c.pressure_bar >= 0.0
+                assert c.flow_rate_lpm >= 0.0
+                assert c.status in ["NORMAL", "LOW_PRESSURE", "CRITICAL", "SENSOR_DISCONNECTED"]
+
+
+def test_database_safe_reinitialization():
+    """Verify calling seed_initial_cylinders repeatedly does not create duplicate records."""
+    with app.app_context():
+        count_before = Cylinder.query.count()
+        seed_initial_cylinders()
+        count_after = Cylinder.query.count()
+        assert count_after == count_before
+
+
+def test_database_relationships():
+    """Verify One-to-Many relationships: Cylinder -> Telemetry and Cylinder -> Alert."""
+    with app.app_context():
+        icu_cyl = Cylinder.query.filter_by(cylinder_id="CYL-ICU-101").first()
+        assert icu_cyl is not None
+        assert icu_cyl.telemetry_records.count() > 0
+        first_t = icu_cyl.telemetry_records.first()
+        assert first_t.cylinder_db_id == icu_cyl.id
+        assert first_t.cylinder.cylinder_id == "CYL-ICU-101"
+
+        # Check alert relationship for critical cylinder CYL-REC-108
+        rec_cyl = Cylinder.query.filter_by(cylinder_id="CYL-REC-108").first()
+        assert rec_cyl is not None
+        assert rec_cyl.alerts.count() > 0
+        alert = rec_cyl.alerts.first()
+        assert alert.cylinder_db_id == rec_cyl.id
+        assert alert.alert_type == "CRITICAL"
+
+
+def test_api_cylinder_telemetry_history(client):
+    """Verify GET /api/cylinders/<cyl_id>/telemetry endpoint."""
+    res = client.get("/api/cylinders/CYL-ICU-101/telemetry?limit=10")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+    assert data["cylinder_id"] == "CYL-ICU-101"
+    assert "telemetry" in data
+    assert len(data["telemetry"]) > 0
+
+    first_point = data["telemetry"][0]
+    assert "timestamp" in first_point
+    assert "pressure_bar" in first_point
+    assert "flow_rate_lpm" in first_point
+    assert "is_simulated" in first_point
+
+    # Test non-existent cylinder returns 404
+    res_404 = client.get("/api/cylinders/NON-EXISTENT/telemetry")
+    assert res_404.status_code == 404
+    assert res_404.get_json()["success"] is False
+
+
+def test_telemetry_ingest_persists_to_database(client):
+    """Verify hardware/simulated telemetry packet persists to SQLite Cylinder and Telemetry tables."""
+    test_id = "CYL-TEST-999"
+    payload = {
+        "cylinders": [
+            {
+                "cylinder_id": test_id,
+                "pressure_bar": 125.5,
+                "flow_lpm": 2.5,
+                "battery_pct": 85
+            }
+        ]
+    }
+    res = client.post("/api/telemetry", json=payload)
+    assert res.status_code == 200
+
+    with app.app_context():
+        db_c = Cylinder.query.filter_by(cylinder_id=test_id).first()
+        assert db_c is not None
+        assert db_c.pressure_bar == 125.5
+        assert db_c.flow_rate_lpm == 2.5
+        assert db_c.battery_percentage == 85
+
+        t_entry = Telemetry.query.filter_by(cylinder_id=test_id).order_by(Telemetry.timestamp.desc()).first()
+        assert t_entry is not None
+        assert t_entry.cylinder_db_id == db_c.id
+        assert t_entry.pressure_bar == 125.5
+
+        # Cleanup test records so demo database stays clean
+        Telemetry.query.filter_by(cylinder_id=test_id).delete()
+        Cylinder.query.filter_by(cylinder_id=test_id).delete()
+        db.session.commit()
+
+
+def test_24h_telemetry_retention_prune():
+    """Verify that records older than 24h are deleted while younger records are preserved."""
+    test_id = "CYL-RETENTION-TEST"
+    with app.app_context():
+        # Setup test cylinder
+        cyl = Cylinder(
+            cylinder_id=test_id,
+            ward="Test Ward",
+            pressure_bar=100.0,
+            flow_rate_lpm=2.0,
+            status="NORMAL"
+        )
+        db.session.add(cyl)
+        db.session.flush()
+
+        now = datetime.utcnow()
+        # Record 1: 30 hours old (should be purged)
+        old_record = Telemetry(
+            cylinder_db_id=cyl.id,
+            cylinder_id=test_id,
+            pressure_bar=90.0,
+            flow_rate_lpm=2.0,
+            timestamp=now - timedelta(hours=30)
+        )
+        # Record 2: 2 hours old (should be retained)
+        recent_record = Telemetry(
+            cylinder_db_id=cyl.id,
+            cylinder_id=test_id,
+            pressure_bar=95.0,
+            flow_rate_lpm=2.0,
+            timestamp=now - timedelta(hours=2)
+        )
+        db.session.add(old_record)
+        db.session.add(recent_record)
+        db.session.commit()
+
+        # Enforce 24-hour retention
+        deleted = prune_telemetry_older_than(hours=24, force=True)
+        assert deleted >= 1
+
+        # Check records for this cylinder
+        remaining = Telemetry.query.filter_by(cylinder_id=test_id).all()
+        assert len(remaining) == 1
+        assert remaining[0].pressure_bar == 95.0
+
+        # Cleanup
+        Telemetry.query.filter_by(cylinder_id=test_id).delete()
+        Cylinder.query.filter_by(cylinder_id=test_id).delete()
+        db.session.commit()
+
+
+def test_api_telemetry_retention_endpoint(client):
+    """Verify GET /api/telemetry/retention endpoint triggers retention policy."""
+    res = client.get("/api/telemetry/retention?hours=24")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+    assert data["retention_hours"] == 24
+    assert "deleted_records" in data
+    assert "total_remaining_records" in data
+
+
 
 

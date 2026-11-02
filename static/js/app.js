@@ -446,8 +446,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (currentScreen === 'screen-dashboard') {
         if (currentView === 'view-cylinders') {
           loadCylinderFleet(false);
-        } else if (currentView === 'view-history') {
-          renderHistoryRows(data.history);
         }
       }
     } catch (err) {
@@ -555,10 +553,6 @@ document.addEventListener('DOMContentLoaded', () => {
     changeActiveCylinder(e.target.value);
   });
 
-  document.getElementById('global-select-cylinder')?.addEventListener('change', (e) => {
-    changeActiveCylinder(e.target.value);
-  });
-
   document.getElementById('history-select-cylinder')?.addEventListener('change', (e) => {
     changeActiveCylinder(e.target.value);
   });
@@ -654,17 +648,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Card A: Pressure
-    const pVal = data.pressure.value;
+    const pVal = Math.max(0, data.pressure.value || 0);
     const pUnit = data.pressure.unit;
     const pPri = document.getElementById('val-pressure-primary');
     const pUnitEl = document.getElementById('unit-pressure-primary');
     const pSec = document.getElementById('val-pressure-secondary');
+    const pBar = Math.max(0, data.pressure.bar || 0);
+    const pPsi = Math.max(0, data.pressure.psi || 0);
 
     if (pPri) pPri.textContent = data.device.esp32_connected ? pVal : '--';
     if (pUnitEl) pUnitEl.textContent = pUnit;
     if (pSec) {
       pSec.textContent = data.device.esp32_connected
-        ? `${data.pressure.bar} bar (${data.pressure.psi} PSI)`
+        ? `${pBar} bar (${pPsi} PSI)`
         : 'ESP32 Disconnected (No Signal)';
     }
 
@@ -848,15 +844,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const c = res.cylinder;
       document.getElementById('modal-cylinder-id').textContent = `${c.id} — Diagnostic Specification`;
       document.getElementById('modal-content').innerHTML = `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
-          <div><strong>Ward / Location:</strong><br>${c.ward}</div>
-          <div><strong>Assigned Patient:</strong><br>${c.patient}</div>
-          <div><strong>Cylinder Model:</strong><br>${c.type} (${c.capacity_l} L capacity)</div>
-          <div><strong>Telemetry Node:</strong><br><code>${c.sensor_id}</code> (Battery: ${c.battery_pct}%)</div>
-          <div><strong>Current Pressure:</strong><br><span style="font-size:1.2rem;font-weight:700;">${c.pressure_psi} PSI</span> (${c.pressure_bar} bar)</div>
-          <div><strong>Flow Rate:</strong><br><span style="font-size:1.2rem;font-weight:700;">${c.flow_lpm} L/min</span></div>
-          <div><strong>Estimated Time Remaining:</strong><br><span style="font-size:1.1rem;font-weight:700;color:var(--teal-primary);">${c.ete}</span></div>
-          <div><strong>Operational Status:</strong><br><span class="status-pill-large badge-${c.status.toLowerCase()}">${formatStatus(c.status)}</span></div>
+        <div class="modal-detail-grid">
+          <div><strong class="modal-label">Ward / Location:</strong><br><span class="modal-val">${c.ward}</span></div>
+          <div><strong class="modal-label">Assigned Patient:</strong><br><span class="modal-val">${c.patient}</span></div>
+          <div><strong class="modal-label">Cylinder Model:</strong><br><span class="modal-val">${c.type} (${c.capacity_l} L capacity)</span></div>
+          <div><strong class="modal-label">Telemetry Node:</strong><br><code class="modal-code">${c.sensor_id}</code> <span class="modal-val">(Battery: ${c.battery_pct}%)</span></div>
+          <div><strong class="modal-label">Current Pressure:</strong><br><span class="modal-val-lg">${c.pressure_psi} PSI</span> <span class="modal-val-sub">(${c.pressure_bar} bar)</span></div>
+          <div><strong class="modal-label">Flow Rate:</strong><br><span class="modal-val-lg">${c.flow_lpm} L/min</span></div>
+          <div><strong class="modal-label">Estimated Time Remaining:</strong><br><span class="modal-val-lg text-teal">${c.ete}</span></div>
+          <div><strong class="modal-label">Operational Status:</strong><br><span class="status-pill-large badge-${c.status.toLowerCase()}">${formatStatus(c.status)}</span></div>
         </div>
         <div style="margin-bottom:16px;display:flex;justify-content:flex-end;">
           <button class="btn btn-primary" id="btn-modal-monitor-live" data-id="${c.id}">
@@ -917,7 +913,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (counter) counter.textContent = `${unack.length} Active`;
 
       if (!unack.length) {
-        activeContainer.innerHTML = `<div style="padding:24px;text-align:center;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-weight:500;">All telemetry nominal. No active unacknowledged alerts.</div>`;
+        activeContainer.innerHTML = `<div class="nominal-alerts-banner">All telemetry nominal. No active unacknowledged alerts.</div>`;
       } else {
         unack.forEach(a => {
           const div = document.createElement('div');
@@ -1012,13 +1008,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btn-sim-reset')?.addEventListener('click', async () => {
     const res = await OxyAPI.triggerScenario('RESET');
-    if (!res?.state?.device?.esp32_connected) {
-      showToast('Reset complete: ESP32 is offline (no simulation started)');
-    } else {
-      showToast('Reset to Normal: Telemetry nominal');
-    }
+    const msg = res?.message || 'Oxygen Cylinder Refilled: Supply restored to full nominal pressure';
+    showToast(msg);
     pollLiveTelemetry();
     loadAlertsView();
+    if (currentView === 'view-cylinders') {
+      loadCylinderFleet(true);
+    }
   });
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -1094,6 +1090,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const histSelect = document.getElementById('history-select-cylinder');
       if (histSelect) histSelect.value = activeCylinderId;
 
+      const limitVal = 500;
+
       const histTag = document.getElementById('history-active-cyl-tag');
       if (histTag) histTag.textContent = `Monitoring: ${activeCylinderId}`;
 
@@ -1103,8 +1101,19 @@ document.addEventListener('DOMContentLoaded', () => {
         csvBtn.setAttribute('download', `oxysense_${activeCylinderId.toLowerCase()}_report.csv`);
       }
 
-      const data = await OxyAPI.getHistory('24h');
-      renderHistoryRows(data.points);
+      // Query SQLite database for complete historical records
+      const dbData = await OxyAPI.getCylinderTelemetry(activeCylinderId, limitVal);
+      const totalBadge = document.getElementById('history-total-count-badge');
+      if (totalBadge && dbData.total_records !== undefined) {
+        totalBadge.textContent = `${dbData.total_records.toLocaleString()} Logged in DB`;
+      }
+
+      if (dbData && dbData.telemetry && dbData.telemetry.length > 0) {
+        renderHistoryRows(dbData.telemetry);
+      } else {
+        const fallback = await OxyAPI.getHistory('24h', activeCylinderId);
+        renderHistoryRows(fallback.points || []);
+      }
     } catch (err) {
       console.error('History load error:', err);
     }
@@ -1115,18 +1124,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!tbody || !points) return;
     tbody.innerHTML = '';
 
-    const reversed = [...points].reverse().slice(0, 25);
+    // Show all records (up to 250 rows), newest first
+    const reversed = [...points].reverse();
     reversed.forEach(p => {
       const tr = document.createElement('tr');
+      const timeDisplay = p.timestamp ? (p.timestamp.includes(' ') ? p.timestamp.split(' ')[1] : p.timestamp) : '--:--';
+      const pPsi = p.pressure_psi ?? Math.round((p.pressure_bar || 0) * 14.5038);
+      const fLpm = (p.flow_rate_lpm ?? p.flow_lpm ?? 0).toFixed(2);
+      const remPct = p.remaining_pct ?? Math.round(((p.pressure_bar || 0) / 200.0) * 100);
+      const eteStr = p.ete_minutes ? `${Math.floor(p.ete_minutes / 60)}h ${Math.round(p.ete_minutes % 60)}m` : (p.pressure_bar > 0 ? `${Math.floor(p.pressure_bar / 20)}h` : '0h 00m');
+      const statusStr = p.status || (p.pressure_bar <= 20 ? 'CRITICAL' : p.pressure_bar <= 50 ? 'LOW_PRESSURE' : 'NORMAL');
+      const verificationTag = p.data_source === 'HARDWARE_ESP32' ? 'Hardware Verified' : 'Database Logged';
+
       tr.innerHTML = `
-        <td>${p.timestamp}</td>
+        <td>${timeDisplay}</td>
         <td>${p.pressure_bar}</td>
-        <td><strong>${p.pressure_psi}</strong></td>
-        <td>${p.flow_lpm.toFixed(2)}</td>
-        <td>${p.remaining_pct}%</td>
-        <td>${p.ete_minutes ? `${Math.floor(p.ete_minutes / 60)}h ${Math.round(p.ete_minutes % 60)}m` : 'N/A'}</td>
-        <td><span class="status-pill-large badge-${p.status.toLowerCase()}">${formatStatus(p.status)}</span></td>
-        <td><span class="badge-tag">Synthetic Hash OK</span></td>
+        <td><strong>${pPsi}</strong></td>
+        <td>${fLpm}</td>
+        <td>${remPct}%</td>
+        <td>${eteStr}</td>
+        <td><span class="status-pill-large badge-${statusStr.toLowerCase()}">${formatStatus(statusStr)}</span></td>
+        <td><span class="badge-tag">${verificationTag}</span></td>
       `;
       tbody.appendChild(tr);
     });

@@ -28,9 +28,9 @@ def detect_esp32_port():
     ports = list_available_ports()
     if not ports:
         return None
-    # 1. Check for Bluetooth RFCOMM port linked to ESP32 (e.g. COM10, COM9)
+    # 1. Check for Bluetooth Outgoing port linked to OxySense-ESP32 (COM10)
     for p in ports:
-        if p.device in ['COM10', 'COM9']:
+        if p.device == 'COM10':
             return p.device
     # 2. Check for USB-to-UART chips (CP210x, CH340, FTDI)
     for p in ports:

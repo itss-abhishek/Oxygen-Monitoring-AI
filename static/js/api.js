@@ -13,8 +13,15 @@ const OxyAPI = {
     return res.json();
   },
 
-  async getHistory(range = '15m') {
-    const res = await fetch(`/api/history?range=${range}`);
+  async getHistory(range = '15m', cylinderId = '') {
+    const query = new URLSearchParams({ range });
+    if (cylinderId) query.set('cylinder_id', cylinderId);
+    const res = await fetch(`/api/history?${query}`);
+    return res.json();
+  },
+
+  async getCylinderTelemetry(cylinderId, limit = 200) {
+    const res = await fetch(`/api/cylinders/${encodeURIComponent(cylinderId)}/telemetry?limit=${limit}`);
     return res.json();
   },
 

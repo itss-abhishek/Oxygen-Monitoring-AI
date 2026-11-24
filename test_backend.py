@@ -130,14 +130,15 @@ def test_api_telemetry_hardware_ingest(client):
     assert cyls["CYL-REC-108"]["status"] == "CRITICAL"
 
 def test_auth_login_success(client):
-    res = client.post("/api/auth/login", json={"email": "doctor@oxysense.med", "password": "doctor123"})
+    res = client.post("/api/auth/login", json={"email": "admin@iilm.edu", "password": "Admin@IILM2026"})
     assert res.status_code == 200
     data = res.get_json()
     assert data["success"] is True
-    assert data["user"]["name"] == "Dr. Sharma"
+    assert data["user"]["email"] == "admin@iilm.edu"
+    assert data["user"]["full_name"] == "Main Administrator"
 
 def test_auth_login_failure(client):
-    res = client.post("/api/auth/login", json={"email": "wrong@oxysense.med", "password": "wrong"})
+    res = client.post("/api/auth/login", json={"email": "wrong@iilm.edu", "password": "wrong"})
     assert res.status_code == 401
     data = res.get_json()
     assert data["success"] is False
@@ -150,14 +151,14 @@ def test_auth_session(client):
     assert res.get_json()["authenticated"] is False
 
     # Authenticate and check session
-    client.post("/api/auth/login", json={"email": "nurse@oxysense.med", "password": "nurse123"})
+    client.post("/api/auth/login", json={"email": "admin@iilm.edu", "password": "Admin@IILM2026"})
     res2 = client.get("/api/auth/session")
     assert res2.status_code == 200
     assert res2.get_json()["authenticated"] is True
-    assert res2.get_json()["user"]["role"] == "Senior Respiratory Nurse"
+    assert res2.get_json()["user"]["role"] == "MAIN_ADMIN"
 
 def test_auth_logout(client):
-    client.post("/api/auth/login", json={"email": "admin@oxysense.med", "password": "admin123"})
+    client.post("/api/auth/login", json={"email": "admin@iilm.edu", "password": "Admin@IILM2026"})
     res = client.post("/api/auth/logout")
     assert res.status_code == 200
     assert res.get_json()["success"] is True
@@ -357,6 +358,96 @@ def test_api_telemetry_retention_endpoint(client):
     assert data["retention_hours"] == 24
     assert "deleted_records" in data
     assert "total_remaining_records" in data
+
+
+def test_ai_insights_with_groq_sdk_mocked(monkeypatch, test_state):
+    """Verify Groq SDK synthesis works with mocked response without internet."""
+    class MockMessage:
+        content = "OxySense Logistics: Monitored cylinder nominal. Central inventory ready for scheduled exchange."
+
+    class MockChoice:
+        message = MockMessage()
+
+    class MockCompletion:
+        choices = [MockChoice()]
+
+    class MockChatCompletions:
+        def create(self, **kwargs):
+            assert kwargs.get("model") is not None
+            assert len(kwargs.get("messages", [])) == 2
+            return MockCompletion()
+
+    class MockGroqClient:
+        def __init__(self, **kwargs):
+            assert kwargs.get("api_key") == "gsk_mock_valid_key_12345678"
+            self.chat = type("Chat", (), {"completions": MockChatCompletions()})()
+
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_mock_valid_key_12345678")
+    monkeypatch.setattr("backend.simulation_engine.Groq", MockGroqClient)
+
+    test_state.is_sensor_connected = True
+    test_state.current_pressure_bar = 160.0
+    test_state.current_flow_lpm = 2.0
+
+    insights = generate_ai_insights(test_state)
+    assert insights["is_llm_active"] is True
+    assert "Groq Cloud LLM" in insights["engine"]
+    assert "OxySense Logistics" in insights["summary"]
+    assert "Non-Clinical Operational Assistance" in insights["safety_disclaimer"]
+    assert len(insights["operational_suggestions"]) > 0
+
+
+def test_ai_insights_groq_api_error_fallback(monkeypatch, test_state):
+    """Verify graceful fallback to deterministic logic when Groq API fails or times out."""
+    class ErrorGroqClient:
+        def __init__(self, **kwargs):
+            raise ConnectionError("Simulated Groq Cloud network timeout")
+
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_mock_valid_key_12345678")
+    monkeypatch.setattr("backend.simulation_engine.Groq", ErrorGroqClient)
+
+    test_state.is_sensor_connected = True
+    test_state.current_pressure_bar = 160.0
+    test_state.current_flow_lpm = 2.0
+
+    insights = generate_ai_insights(test_state)
+    assert insights["is_llm_active"] is False
+    assert "Rule-Based Expert Engine" in insights["engine"]
+    assert "summary" in insights
+    assert len(insights["operational_suggestions"]) > 0
+
+
+def test_ai_insights_fleet_inventory_context(test_state):
+    """Verify fleet inventory critical status triggers deterministic inventory alert."""
+    test_state.is_sensor_connected = True
+    test_state.current_pressure_bar = 160.0
+
+    inventory_summary = {
+        "total_cylinders": 6,
+        "normal_count": 5,
+        "warning_count": 0,
+        "critical_count": 1,
+        "critical_cylinders": ["CYL-ER-204 (Emergency Dept - 15.0 bar)"]
+    }
+
+    insights = generate_ai_insights(test_state, inventory_summary=inventory_summary)
+    assert any("Hospital fleet reserve alert" in c for c in insights["detected_conditions"])
+    assert any("central oxygen replenishment" in a.lower() for a in insights["operational_suggestions"])
+
+
+def test_api_ai_insights_endpoint(client):
+    """Verify GET /api/ai-insights endpoint returns non-clinical operational assistance."""
+    res = client.get("/api/ai-insights")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert "engine" in data
+    assert "is_llm_active" in data
+    assert "summary" in data
+    assert "detected_conditions" in data
+    assert "operational_suggestions" in data
+    assert "safety_disclaimer" in data
+    assert "Non-Clinical Operational Assistance" in data["safety_disclaimer"]
+
 
 
 

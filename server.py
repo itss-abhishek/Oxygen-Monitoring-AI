@@ -3,6 +3,9 @@ server.py — Main Entrypoint for OxySense Web Dashboard.
 """
 import os
 import sys
+from dotenv import load_dotenv
+
+load_dotenv()
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 

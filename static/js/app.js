@@ -96,16 +96,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const roleEl = document.getElementById('dash-user-role');
     const avatarEl = document.getElementById('dash-user-avatar');
 
-    if (nameEl) nameEl.textContent = currentUser.name || 'Staff User';
+    if (nameEl) nameEl.textContent = currentUser.name || currentUser.full_name || 'Staff User';
     if (roleEl) roleEl.textContent = currentUser.role || 'Clinical Operator';
     if (avatarEl) {
-      const initials = (currentUser.name || 'SU')
+      const initials = (currentUser.name || currentUser.full_name || 'SU')
         .split(' ')
         .map(n => n[0])
         .join('')
         .substring(0, 2)
         .toUpperCase();
       avatarEl.textContent = initials;
+    }
+
+    // Role-based visibility and action controls
+    const navUsers = document.getElementById('nav-item-users');
+    const isAdmin = Boolean(currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'MAIN_ADMIN' || currentUser.is_main_admin));
+
+    if (navUsers) {
+      navUsers.style.display = isAdmin ? 'flex' : 'none';
+    }
+
+    // Restrict simulation buttons & operational settings for Viewers
+    const simBtns = document.querySelectorAll('#btn-sim-low, #btn-sim-leak, #btn-sim-reset, #btn-save-settings');
+    simBtns.forEach(b => {
+      if (!isAdmin) {
+        b.disabled = true;
+        b.style.opacity = '0.45';
+        b.style.cursor = 'not-allowed';
+        b.title = 'Viewer Mode: Administrative permissions required';
+      } else {
+        b.disabled = false;
+        b.style.opacity = '1';
+        b.style.cursor = 'pointer';
+        b.removeAttribute('title');
+      }
+    });
+
+    // If a Viewer navigated to view-users, redirect to view-overview
+    if (!isAdmin && currentView === 'view-users') {
+      switchView('view-overview');
     }
   }
 
@@ -211,6 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 4. LOGIN PAGE & AUTHENTICATION
   // ═════════════════════════════════════════════════════════════════════════
   const loginForm = document.getElementById('form-login');
+  const registerForm = document.getElementById('form-register');
   const loginEmailInput = document.getElementById('input-login-email');
   const loginPwdInput = document.getElementById('input-login-password');
   const pwdToggleBtn = document.getElementById('btn-toggle-pwd');
@@ -220,6 +250,147 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginSubmitBtn = document.getElementById('btn-login-submit');
   const loginBtnText = document.getElementById('login-btn-text');
   const loginSpinner = document.getElementById('login-spinner');
+
+  // Registration Elements
+  const tabBtnSignIn = document.getElementById('tab-btn-signin');
+  const tabBtnRegister = document.getElementById('tab-btn-register');
+  const regStep1 = document.getElementById('register-step-1');
+  const regStep2 = document.getElementById('register-step-2');
+  const regNameInput = document.getElementById('input-reg-name');
+  const regEmailInput = document.getElementById('input-reg-email');
+  const regOtpInput = document.getElementById('input-reg-otp');
+  const regPwdInput = document.getElementById('input-reg-password');
+  const btnSendOtp = document.getElementById('btn-send-otp');
+  const sendOtpBtnText = document.getElementById('send-otp-btn-text');
+  const sendOtpSpinner = document.getElementById('send-otp-spinner');
+  const btnVerifySubmit = document.getElementById('btn-verify-submit');
+  const verifyBtnText = document.getElementById('verify-btn-text');
+  const verifySpinner = document.getElementById('verify-spinner');
+  const btnBackToStep1 = document.getElementById('btn-back-to-step1');
+
+  // Auth Mode Tabs switching
+  tabBtnSignIn?.addEventListener('click', () => {
+    tabBtnSignIn.classList.add('active');
+    tabBtnRegister.classList.remove('active');
+    loginForm.style.display = 'block';
+    registerForm.style.display = 'none';
+    if (loginErrorBanner) loginErrorBanner.style.display = 'none';
+  });
+
+  tabBtnRegister?.addEventListener('click', () => {
+    tabBtnRegister.classList.add('active');
+    tabBtnSignIn.classList.remove('active');
+    loginForm.style.display = 'none';
+    registerForm.style.display = 'block';
+    regStep1.style.display = 'block';
+    regStep2.style.display = 'none';
+    if (loginErrorBanner) loginErrorBanner.style.display = 'none';
+  });
+
+  // Step 1: Send OTP
+  btnSendOtp?.addEventListener('click', async () => {
+    const email = regEmailInput.value.trim().toLowerCase();
+    const name = regNameInput.value.trim();
+
+    if (!email || !name) {
+      if (loginErrorText) loginErrorText.textContent = 'Please enter both your full name and @iilm.edu email.';
+      if (loginErrorBanner) loginErrorBanner.style.display = 'flex';
+      return;
+    }
+
+    if (!email.endsWith('@iilm.edu')) {
+      if (loginErrorText) loginErrorText.textContent = 'Registration rejected: Only institutional emails ending with @iilm.edu are permitted.';
+      if (loginErrorBanner) loginErrorBanner.style.display = 'flex';
+      return;
+    }
+
+    btnSendOtp.disabled = true;
+    sendOtpBtnText.style.display = 'none';
+    sendOtpSpinner.style.display = 'inline-block';
+    if (loginErrorBanner) loginErrorBanner.style.display = 'none';
+
+    try {
+      const res = await OxyAPI.requestRegistrationOtp(email, name);
+      if (res.success) {
+        showToast(res.message);
+        regStep1.style.display = 'none';
+        regStep2.style.display = 'block';
+        const bannerText = document.getElementById('reg-step2-banner-text');
+        if (res.dev_otp) {
+          regOtpInput.value = res.dev_otp;
+          if (bannerText) {
+            bannerText.innerHTML = `Dev Mode (SMTP Offline): Your OTP is <strong>${res.dev_otp}</strong> (auto-filled below).`;
+          }
+        } else if (bannerText) {
+          bannerText.textContent = `Verification OTP dispatched to ${email}. Code expires in 10 minutes.`;
+        }
+        regOtpInput.focus();
+      } else {
+        if (loginErrorText) loginErrorText.textContent = res.error || 'Failed to dispatch verification code.';
+        if (loginErrorBanner) loginErrorBanner.style.display = 'flex';
+      }
+    } catch (err) {
+      if (loginErrorText) loginErrorText.textContent = 'Cannot connect to backend server. Ensure python server.py is running.';
+      if (loginErrorBanner) loginErrorBanner.style.display = 'flex';
+    } finally {
+      btnSendOtp.disabled = false;
+      sendOtpBtnText.style.display = 'inline';
+      sendOtpSpinner.style.display = 'none';
+    }
+  });
+
+  // Step 2: Back to Step 1
+  btnBackToStep1?.addEventListener('click', () => {
+    regStep2.style.display = 'none';
+    regStep1.style.display = 'block';
+    if (loginErrorBanner) loginErrorBanner.style.display = 'none';
+  });
+
+  // Step 2: Verify OTP and Register
+  registerForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = regEmailInput.value.trim().toLowerCase();
+    const name = regNameInput.value.trim();
+    const otp = regOtpInput.value.trim();
+    const password = regPwdInput.value;
+
+    if (!otp || otp.length !== 6) {
+      if (loginErrorText) loginErrorText.textContent = 'Please enter the 6-digit verification code.';
+      if (loginErrorBanner) loginErrorBanner.style.display = 'flex';
+      return;
+    }
+
+    if (!password || password.length < 8) {
+      if (loginErrorText) loginErrorText.textContent = 'Password must be at least 8 characters long.';
+      if (loginErrorBanner) loginErrorBanner.style.display = 'flex';
+      return;
+    }
+
+    btnVerifySubmit.disabled = true;
+    verifyBtnText.style.display = 'none';
+    verifySpinner.style.display = 'inline-block';
+    if (loginErrorBanner) loginErrorBanner.style.display = 'none';
+
+    try {
+      const res = await OxyAPI.verifyRegistrationOtp(email, otp, password, name);
+      if (res.success && res.user) {
+        currentUser = res.user;
+        sessionStorage.setItem('oxysense_user', JSON.stringify(res.user));
+        showToast('Registration complete! Welcome to OxySense (Viewer Role assigned).');
+        showScreen('screen-dashboard');
+      } else {
+        if (loginErrorText) loginErrorText.textContent = res.error || 'Verification failed.';
+        if (loginErrorBanner) loginErrorBanner.style.display = 'flex';
+      }
+    } catch (err) {
+      if (loginErrorText) loginErrorText.textContent = 'Cannot connect to backend server. Ensure python server.py is running.';
+      if (loginErrorBanner) loginErrorBanner.style.display = 'flex';
+    } finally {
+      btnVerifySubmit.disabled = false;
+      verifyBtnText.style.display = 'inline';
+      verifySpinner.style.display = 'none';
+    }
+  });
 
   // Back to Home
   document.getElementById('btn-login-back')?.addEventListener('click', () => {
@@ -236,18 +407,6 @@ document.addEventListener('DOMContentLoaded', () => {
       pwdEyeIcon?.setAttribute('data-lucide', 'eye');
     }
     if (window.lucide) lucide.createIcons();
-  });
-
-  // 1-Click Demo Accounts Quick-Fill
-  document.querySelectorAll('.cred-card-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const email = btn.getAttribute('data-email');
-      const pwd = btn.getAttribute('data-pwd');
-      if (loginEmailInput) loginEmailInput.value = email;
-      if (loginPwdInput) loginPwdInput.value = pwd;
-      if (loginErrorBanner) loginErrorBanner.style.display = 'none';
-      showToast(`Selected demo account: ${email}`);
-    });
   });
 
   // Login form submission
@@ -273,10 +432,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (res.success && res.user) {
         currentUser = res.user;
         sessionStorage.setItem('oxysense_user', JSON.stringify(res.user));
-        showToast(`Signed in successfully as ${res.user.name}`);
+        showToast(`Signed in successfully as ${res.user.name || res.user.full_name}`);
         showScreen('screen-dashboard');
       } else {
-        if (loginErrorText) loginErrorText.textContent = res.error || 'Invalid credentials. Use demo accounts below.';
+        if (loginErrorText) loginErrorText.textContent = res.error || 'Invalid credentials. Use @iilm.edu credentials.';
         if (loginErrorBanner) loginErrorBanner.style.display = 'flex';
       }
     } catch (err) {
@@ -337,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // View-specific initializers
     if (viewId === 'view-overview') {
       OxyCharts.initOverviewCharts();
+      loadAiInsights();
     } else if (viewId === 'view-live') {
       OxyCharts.initLiveFullChart();
     } else if (viewId === 'view-cylinders') {
@@ -349,6 +509,8 @@ document.addEventListener('DOMContentLoaded', () => {
       loadHistoryTable();
     } else if (viewId === 'view-settings') {
       loadSettingsForm();
+    } else if (viewId === 'view-users') {
+      loadAdminUsers();
     }
 
     if (window.lucide) lucide.createIcons();
@@ -432,7 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const data = await OxyAPI.getLiveStream();
       renderOverviewMetrics(data);
-      OxyCharts.updateFromHistory(data.history);
+      OxyCharts.updateFromHistory(data.history, currentPrescribedFlow);
 
       // Also update home page preview card if visible
       const homeP = document.getElementById('home-preview-p');
@@ -497,6 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 8. DASHBOARD OVERVIEW METRICS RENDERING
   // ═════════════════════════════════════════════════════════════════════════
   let activeCylinderId = 'CYL-ICU-101';
+  let currentPrescribedFlow = 2.0;
 
   async function changeActiveCylinder(newCylId) {
     if (!newCylId) return;
@@ -533,6 +696,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         await pollLiveTelemetry();
+
+        // Refresh AI operational insights for the newly selected cylinder
+        loadAiInsights();
 
         // If currently in Historical Reports view, refresh the table
         if (currentView === 'view-history') {
@@ -680,7 +846,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Card B: Flow
-    const fVal = data.flow.value;
+    if (data.flow && typeof data.flow.prescribed === 'number') {
+      currentPrescribedFlow = data.flow.prescribed;
+    }
+    const fVal = (data.history && data.history.length > 0)
+      ? data.history[data.history.length - 1].flow_lpm
+      : (data.flow.value ?? 0.0);
     const fPri = document.getElementById('val-flow-primary');
     const fPres = document.getElementById('val-flow-prescribed');
     const fFill = document.getElementById('flow-progress');
@@ -695,6 +866,20 @@ document.addEventListener('DOMContentLoaded', () => {
         fDiff.textContent = `${flowDiff > 0 ? '+' : ''}${flowDiff} L/min delta`;
       } else {
         fDiff.textContent = 'Hardware Offline';
+      }
+    }
+
+    const flowTag = document.getElementById('flow-tag');
+    if (flowTag) {
+      if (!data.device.esp32_connected) {
+        flowTag.textContent = 'Sensor Offline';
+        flowTag.className = 'badge-tag text-slate-400 bg-slate-800';
+      } else if (data.device.data_source?.includes('HARDWARE') || !data.flow.is_simulated) {
+        flowTag.textContent = 'Live Flow Sensor';
+        flowTag.className = 'badge-tag text-emerald-400 bg-emerald-950/60 border border-emerald-800/40';
+      } else {
+        flowTag.textContent = 'Simulated Flow';
+        flowTag.className = 'badge-tag';
       }
     }
 
@@ -997,6 +1182,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Simulation: Low Supply condition activated (42 Bar / 609 PSI)');
     pollLiveTelemetry();
     loadAlertsView();
+    loadAiInsights();
   });
 
   document.getElementById('btn-sim-disconnect')?.addEventListener('click', async () => {
@@ -1004,6 +1190,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Simulation: Sensor Disconnected / Telemetry Lost');
     pollLiveTelemetry();
     loadAlertsView();
+    loadAiInsights();
   });
 
   document.getElementById('btn-sim-reset')?.addEventListener('click', async () => {
@@ -1015,6 +1202,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentView === 'view-cylinders') {
       loadCylinderFleet(true);
     }
+    loadAiInsights();
   });
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -1022,19 +1210,36 @@ document.addEventListener('DOMContentLoaded', () => {
   // ═════════════════════════════════════════════════════════════════════════
   async function loadAiInsights() {
     try {
-      const data = await OxyAPI.getAiInsights();
+      const ovSum = document.getElementById('ai-overview-summary');
+      const mainSum = document.getElementById('ai-main-summary');
+      if (ovSum) ovSum.style.opacity = '0.7';
+      if (mainSum) mainSum.style.opacity = '0.7';
+
+      const data = await OxyAPI.getAiInsights(activeCylinderId);
 
       const engFull = document.getElementById('ai-engine-full-name');
       const engTag = document.getElementById('ai-engine-tag');
       const timeEl = document.getElementById('ai-timestamp');
-      const mainSum = document.getElementById('ai-main-summary');
-      const ovSum = document.getElementById('ai-overview-summary');
+
+      if (ovSum) ovSum.style.opacity = '1';
+      if (mainSum) mainSum.style.opacity = '1';
 
       if (engFull) engFull.textContent = data.engine;
-      if (engTag) engTag.textContent = data.is_llm_active ? 'Cloud LLM' : 'Rule Engine';
-      if (timeEl) timeEl.textContent = `Last analyzed: ${data.timestamp}`;
+      if (engTag) engTag.textContent = data.is_llm_active ? 'Groq Cloud LLM' : 'Rule Engine';
+      if (timeEl) timeEl.textContent = `Last analyzed: ${data.timestamp}${data.diagnostic && data.diagnostic.latency_ms ? ` (${data.diagnostic.latency_ms}ms)` : ''}`;
       if (mainSum) mainSum.textContent = data.summary;
       if (ovSum) ovSum.textContent = data.summary;
+
+      const groqStatusEl = document.getElementById('groq-live-status-text');
+      if (groqStatusEl && data.diagnostic) {
+        if (data.diagnostic.status === 'SUCCESS') {
+          groqStatusEl.innerHTML = `<span style="color:#34d399;font-weight:600;">● Live Cloud Connected</span>: <code>${data.diagnostic.model}</code> responded in <strong>${data.diagnostic.latency_ms}ms</strong>.`;
+        } else if (data.diagnostic.groq_configured) {
+          groqStatusEl.innerHTML = `<span style="color:#fbbf24;font-weight:600;">⚠️ Groq Notice</span>: ${data.diagnostic.status}`;
+        } else {
+          groqStatusEl.textContent = 'Offline deterministic mode active. Add GROQ_API_KEY to .env to enable cloud synthesis.';
+        }
+      }
 
       const ovActions = document.getElementById('ai-overview-actions');
       if (ovActions) {
@@ -1191,8 +1396,126 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.btn-pill').forEach(p => p.classList.remove('active'));
       pill.classList.add('active');
       const r = pill.getAttribute('data-range');
-      const hist = await OxyAPI.getHistory(r);
-      OxyCharts.updateFromHistory(hist.points);
+      const hist = await OxyAPI.getHistory(r, activeCylinderId);
+      OxyCharts.updateFromHistory(hist.points, currentPrescribedFlow);
+    });
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 13B. INSTITUTIONAL USER MANAGEMENT (ADMIN ONLY)
+  // ═════════════════════════════════════════════════════════════════════════
+  async function loadAdminUsers() {
+    const tbody = document.getElementById('tbody-users');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">Loading personnel directory...</td></tr>';
+
+    try {
+      const res = await OxyAPI.getAdminUsers();
+      if (!res.success || !res.users) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--status-critical); padding: 20px;">${res.error || 'Failed to load users'}</td></tr>`;
+        return;
+      }
+
+      if (res.users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">No registered personnel found.</td></tr>';
+        return;
+      }
+
+      const isMainAdmin = Boolean(currentUser && (currentUser.is_main_admin || currentUser.role === 'MAIN_ADMIN'));
+
+      const renderRow = (u) => {
+        const isSelf = currentUser && currentUser.id === u.id;
+        let roleBadge = '<span class="badge-tag">Viewer</span>';
+        if (u.is_main_admin || u.role === 'MAIN_ADMIN') {
+          roleBadge = '<span class="badge-tag-ai" style="background: rgba(13, 148, 136, 0.25); color: #2dd4bf;">Main Admin</span>';
+        } else if (u.role === 'ADMIN') {
+          roleBadge = '<span class="badge-tag" style="background: rgba(2, 132, 199, 0.25); color: #38bdf8;">Admin</span>';
+        }
+
+        const verifyBadge = u.is_verified
+          ? '<span style="color: #34d399; font-weight: 600;">✓ Verified</span>'
+          : '<span style="color: #f59e0b; font-weight: 600;">⏳ Pending</span>';
+
+        const statusBadge = u.status === 'ACTIVE'
+          ? '<span class="status-pill status-normal" style="font-size: 0.72rem; padding: 2px 8px;">Active</span>'
+          : '<span class="status-pill status-critical" style="font-size: 0.72rem; padding: 2px 8px;">Suspended</span>';
+
+        let actionsHtml = '';
+        if (u.is_main_admin) {
+          actionsHtml = '<span style="color: var(--text-muted); font-size: 0.75rem;">System Owner</span>';
+        } else {
+          if (isMainAdmin) {
+            if (u.role === 'VIEWER') {
+              actionsHtml += `<button class="btn btn-sm btn-outline-teal btn-change-role" data-id="${u.id}" data-role="ADMIN" style="padding: 3px 8px; font-size: 0.72rem; margin-right: 6px;">Promote Admin</button>`;
+            } else if (u.role === 'ADMIN') {
+              actionsHtml += `<button class="btn btn-sm btn-outline-secondary btn-change-role" data-id="${u.id}" data-role="VIEWER" style="padding: 3px 8px; font-size: 0.72rem; margin-right: 6px;">Demote Viewer</button>`;
+            }
+          }
+
+          if (!isSelf) {
+            if (u.status === 'ACTIVE') {
+              actionsHtml += `<button class="btn btn-sm btn-outline-critical btn-change-status" data-id="${u.id}" data-status="SUSPENDED" style="padding: 3px 8px; font-size: 0.72rem;">Suspend</button>`;
+            } else {
+              actionsHtml += `<button class="btn btn-sm btn-outline-teal btn-change-status" data-id="${u.id}" data-status="ACTIVE" style="padding: 3px 8px; font-size: 0.72rem;">Activate</button>`;
+            }
+          }
+        }
+
+        return `
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 12px; font-weight: 600;">${u.full_name || u.name}</td>
+            <td style="padding: 12px;"><code>${u.email}</code></td>
+            <td style="padding: 12px; color: var(--text-muted);">${u.created_at || '—'}</td>
+            <td style="padding: 12px; text-align: center;">${verifyBadge}</td>
+            <td style="padding: 12px; text-align: center;">${roleBadge}</td>
+            <td style="padding: 12px; text-align: center;">${statusBadge}</td>
+            <td style="padding: 12px; text-align: right;">${actionsHtml}</td>
+          </tr>
+        `;
+      };
+
+      tbody.innerHTML = res.users.map(renderRow).join('');
+
+      tbody.querySelectorAll('.btn-change-role').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const uId = btn.getAttribute('data-id');
+          const newRole = btn.getAttribute('data-role');
+          const r = await OxyAPI.modifyUserRole(uId, newRole);
+          if (r.success) {
+            showToast(r.message);
+            loadAdminUsers();
+          } else {
+            showToast(`Role update failed: ${r.error}`);
+          }
+        });
+      });
+
+      tbody.querySelectorAll('.btn-change-status').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const uId = btn.getAttribute('data-id');
+          const newStatus = btn.getAttribute('data-status');
+          const r = await OxyAPI.modifyUserStatus(uId, newStatus);
+          if (r.success) {
+            showToast(r.message);
+            loadAdminUsers();
+          } else {
+            showToast(`Status update failed: ${r.error}`);
+          }
+        });
+      });
+
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--status-critical); padding: 20px;">Error loading users: ${err.message}</td></tr>`;
+    }
+  }
+
+  document.getElementById('btn-refresh-users')?.addEventListener('click', loadAdminUsers);
+  document.getElementById('input-users-search')?.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase().trim();
+    const rows = document.querySelectorAll('#tbody-users tr');
+    rows.forEach(r => {
+      const text = r.textContent.toLowerCase();
+      r.style.display = text.includes(term) ? '' : 'none';
     });
   });
 
@@ -1229,4 +1552,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // ═════════════════════════════════════════════════════════════════════════
   initSplashScreen();
   startStreaming();
+  loadAiInsights();
 });

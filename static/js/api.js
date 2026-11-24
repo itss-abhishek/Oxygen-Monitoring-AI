@@ -73,8 +73,9 @@ const OxyAPI = {
     return res.json();
   },
 
-  async getAiInsights() {
-    const res = await fetch('/api/ai-insights');
+  async getAiInsights(cylinderId = null) {
+    const url = cylinderId ? `/api/ai-insights?cylinder_id=${encodeURIComponent(cylinderId)}` : '/api/ai-insights';
+    const res = await fetch(url);
     return res.json();
   },
 
@@ -97,6 +98,47 @@ const OxyAPI = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
+    });
+    return res.json();
+  },
+
+  async requestRegistrationOtp(email, fullName) {
+    const res = await fetch('/api/auth/register-request-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, full_name: fullName })
+    });
+    return res.json();
+  },
+
+  async verifyRegistrationOtp(email, otp, password, fullName) {
+    const res = await fetch('/api/auth/register-verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, password, full_name: fullName })
+    });
+    return res.json();
+  },
+
+  async getAdminUsers() {
+    const res = await fetch('/api/admin/users');
+    return res.json();
+  },
+
+  async modifyUserRole(userId, role) {
+    const res = await fetch(`/api/admin/users/${userId}/role`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role })
+    });
+    return res.json();
+  },
+
+  async modifyUserStatus(userId, status) {
+    const res = await fetch(`/api/admin/users/${userId}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
     });
     return res.json();
   },

@@ -5,6 +5,8 @@
 const OxyCharts = {
   pressureChart: null,
   flowChart: null,
+  reserveChart: null,
+  eteChart: null,
   liveFullChart: null,
   homePreviewChart: null,
 
@@ -57,6 +59,8 @@ const OxyCharts = {
   initOverviewCharts() {
     const ctxP = document.getElementById('chart-pressure');
     const ctxF = document.getElementById('chart-flow');
+    const ctxR = document.getElementById('chart-reserve');
+    const ctxE = document.getElementById('chart-ete');
 
     if (ctxP && !this.pressureChart) {
       const ctx2dP = ctxP.getContext('2d');
@@ -72,7 +76,7 @@ const OxyCharts = {
             borderColor: '#0284c7',
             backgroundColor: gradP,
             borderWidth: 2.6,
-            tension: 0.38,
+            tension: 0.32,
             fill: true,
             pointRadius: (ctx) => (ctx.dataIndex === ctx.dataset.data.length - 1 ? 5 : 0),
             pointBackgroundColor: '#0284c7',
@@ -84,7 +88,7 @@ const OxyCharts = {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          animation: { duration: 350 },
+          animation: { duration: 300 },
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -109,6 +113,7 @@ const OxyCharts = {
             },
             y: {
               grid: { color: 'rgba(148, 163, 184, 0.12)' },
+              title: { display: true, text: 'Pressure (PSI)', color: '#0284c7', font: { weight: 600 } },
               ticks: {
                 color: '#94a3b8',
                 callback: val => `${val} PSI`
@@ -121,7 +126,7 @@ const OxyCharts = {
 
     if (ctxF && !this.flowChart) {
       const ctx2dF = ctxF.getContext('2d');
-      const gradF = this._createGradient(ctx2dF, 'rgba(13, 148, 136, 0.32)', 'rgba(13, 148, 136, 0.00)');
+      const gradF = this._createGradient(ctx2dF, 'rgba(13, 148, 136, 0.25)', 'rgba(13, 148, 136, 0.00)');
 
       this.flowChart = new Chart(ctxF, {
         type: 'line',
@@ -129,43 +134,43 @@ const OxyCharts = {
           labels: [],
           datasets: [
             {
-              label: 'Oxygen Flow (L/min)',
+              label: 'Actual Flow (L/min)',
               data: [],
               borderColor: '#0d9488',
               backgroundColor: gradF,
               borderWidth: 2.6,
-              tension: 0.38,
+              tension: 0,
               fill: true,
               pointRadius: (ctx) => (ctx.dataIndex === ctx.dataset.data.length - 1 ? 5 : 0),
               pointBackgroundColor: '#0d9488',
               pointBorderColor: '#ffffff',
               pointBorderWidth: 2,
-              pointHoverRadius: 6,
-              yAxisID: 'y'
+              pointHoverRadius: 6
             },
             {
-              label: 'Reserve Remaining %',
+              label: 'Prescribed Flow (L/min)',
               data: [],
-              borderColor: '#6366f1',
-              borderDash: [5, 5],
+              borderColor: '#38bdf8',
+              borderDash: [6, 4],
               borderWidth: 2,
+              tension: 0,
               fill: false,
               pointRadius: 0,
-              yAxisID: 'y1'
+              pointHoverRadius: 4
             }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          animation: { duration: 350 },
+          animation: { duration: 300 },
           plugins: {
             legend: {
               display: true,
               position: 'top',
               align: 'end',
               labels: {
-                boxWidth: 10,
+                boxWidth: 12,
                 boxHeight: 10,
                 color: '#94a3b8',
                 font: { size: 11, weight: 600 }
@@ -179,7 +184,10 @@ const OxyCharts = {
               bodyColor: '#ffffff',
               borderColor: '#0d9488',
               borderWidth: 1,
-              padding: 10
+              padding: 10,
+              callbacks: {
+                label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} L/min`
+              }
             }
           },
           scales: {
@@ -191,19 +199,142 @@ const OxyCharts = {
               type: 'linear',
               display: true,
               position: 'left',
-              title: { display: true, text: 'Flow (L/min)', color: '#0d9488', font: { weight: 600 } },
+              title: { display: true, text: 'Flow Rate (L/min)', color: '#0d9488', font: { weight: 600 } },
               grid: { color: 'rgba(148, 163, 184, 0.12)' },
-              ticks: { color: '#94a3b8' }
+              ticks: { color: '#94a3b8', callback: val => `${val} L/min` },
+              min: 0,
+              suggestedMax: 4.0
+            }
+          }
+        }
+      });
+    }
+
+    if (ctxR && !this.reserveChart) {
+      const ctx2dR = ctxR.getContext('2d');
+      const gradR = this._createGradient(ctx2dR, 'rgba(99, 102, 241, 0.32)', 'rgba(99, 102, 241, 0.00)');
+
+      this.reserveChart = new Chart(ctxR, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Reserve Remaining (%)',
+            data: [],
+            borderColor: '#6366f1',
+            backgroundColor: gradR,
+            borderWidth: 2.6,
+            tension: 0.32,
+            fill: true,
+            pointRadius: (ctx) => (ctx.dataIndex === ctx.dataset.data.length - 1 ? 5 : 0),
+            pointBackgroundColor: '#6366f1',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 300 },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              backgroundColor: 'rgba(15, 23, 42, 0.94)',
+              titleColor: '#a5b4fc',
+              bodyColor: '#ffffff',
+              borderColor: '#6366f1',
+              borderWidth: 1,
+              padding: 10,
+              callbacks: {
+                label: ctx => ` Usable Reserve: ${ctx.parsed.y}%`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(148, 163, 184, 0.12)' },
+              ticks: { color: '#94a3b8', maxTicksLimit: 6 }
             },
-            y1: {
+            y: {
               type: 'linear',
               display: true,
-              position: 'right',
-              title: { display: true, text: 'Reserve %', color: '#6366f1', font: { weight: 600 } },
+              position: 'left',
+              title: { display: true, text: 'Remaining Oxygen (%)', color: '#6366f1', font: { weight: 600 } },
+              grid: { color: 'rgba(148, 163, 184, 0.12)' },
+              ticks: { color: '#94a3b8', callback: val => `${val}%` },
               min: 0,
-              max: 100,
-              grid: { drawOnChartArea: false },
-              ticks: { color: '#94a3b8', callback: val => `${val}%` }
+              max: 100
+            }
+          }
+        }
+      });
+    }
+
+    if (ctxE && !this.eteChart) {
+      const ctx2dE = ctxE.getContext('2d');
+      const gradE = this._createGradient(ctx2dE, 'rgba(245, 158, 11, 0.30)', 'rgba(245, 158, 11, 0.00)');
+
+      this.eteChart = new Chart(ctxE, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Estimated Supply Time (min)',
+            data: [],
+            borderColor: '#f59e0b',
+            backgroundColor: gradE,
+            borderWidth: 2.6,
+            tension: 0.32,
+            fill: true,
+            pointRadius: (ctx) => (ctx.dataIndex === ctx.dataset.data.length - 1 ? 5 : 0),
+            pointBackgroundColor: '#f59e0b',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 300 },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              backgroundColor: 'rgba(15, 23, 42, 0.94)',
+              titleColor: '#fcd34d',
+              bodyColor: '#ffffff',
+              borderColor: '#f59e0b',
+              borderWidth: 1,
+              padding: 10,
+              callbacks: {
+                label: ctx => {
+                  const mins = Math.max(0, Math.round(ctx.parsed.y));
+                  const hrs = Math.floor(mins / 60);
+                  const rem = mins % 60;
+                  return ` Supply ETE: ${mins} min (${hrs}h ${rem}m)`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(148, 163, 184, 0.12)' },
+              ticks: { color: '#94a3b8', maxTicksLimit: 6 }
+            },
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: { display: true, text: 'Supply Time (Minutes)', color: '#f59e0b', font: { weight: 600 } },
+              grid: { color: 'rgba(148, 163, 184, 0.12)' },
+              ticks: { color: '#94a3b8', callback: val => `${val} min` },
+              min: 0,
+              suggestedMax: 120
             }
           }
         }
@@ -272,13 +403,33 @@ const OxyCharts = {
     }
   },
 
-  updateFromHistory(historyPoints) {
+  updateFromHistory(historyPoints, prescribedFlow = 2.0) {
     if (!historyPoints || !historyPoints.length) return;
 
-    const labels = historyPoints.map(p => p.timestamp);
-    const pressures = historyPoints.map(p => p.pressure_psi);
-    const flows = historyPoints.map(p => p.flow_lpm);
-    const remainings = historyPoints.map(p => p.remaining_pct);
+    const labels = historyPoints.map(p => p.timestamp || '');
+    const pressures = historyPoints.map(p => (typeof p.pressure_psi === 'number' ? p.pressure_psi : Math.round((p.pressure_bar || 0) * 14.5038)));
+    const flows = historyPoints.map(p => (typeof p.flow_lpm === 'number' ? p.flow_lpm : 0.0));
+    
+    // Constant prescribed flow reference line
+    const targetPrescribed = (typeof prescribedFlow === 'number' && prescribedFlow > 0) ? prescribedFlow : 2.0;
+    const prescribedSeries = new Array(labels.length).fill(targetPrescribed);
+
+    // Consistent cylinder capacity and Boyle-Mariotte reserve percentage model
+    const remainings = historyPoints.map(p => {
+      if (typeof p.remaining_pct === 'number') return p.remaining_pct;
+      const pBar = p.pressure_bar || (p.pressure_psi ? p.pressure_psi / 14.5038 : 0);
+      return Math.max(0, Math.min(100, Math.round((pBar / 200.0) * 1000) / 10));
+    });
+
+    // Recalculated / deterministic ETE in minutes with safe division-by-zero handling
+    const etes = historyPoints.map(p => {
+      if (typeof p.ete_minutes === 'number' && p.ete_minutes >= 0) return p.ete_minutes;
+      const f = typeof p.flow_lpm === 'number' ? p.flow_lpm : 0.0;
+      const pBar = p.pressure_bar || (p.pressure_psi ? p.pressure_psi / 14.5038 : 0);
+      if (f <= 0.05 || pBar <= 0) return 0;
+      const usableL = 660.0 * (pBar / 200.0);
+      return Math.max(0, Math.round((usableL / f) * 10) / 10);
+    });
 
     if (this.pressureChart) {
       this.pressureChart.data.labels = labels;
@@ -300,19 +451,39 @@ const OxyCharts = {
     if (this.flowChart) {
       this.flowChart.data.labels = labels;
       this.flowChart.data.datasets[0].data = flows;
-      this.flowChart.data.datasets[1].data = remainings;
+      if (this.flowChart.data.datasets[1]) {
+        this.flowChart.data.datasets[1].data = prescribedSeries;
+      }
 
-      // Dynamic auto-scale for flow to display respiratory rhythm clearly
+      // 0 baseline, auto-expanding ceiling for flow
       if (flows.length) {
-        const minF = Math.min(...flows);
-        const maxF = Math.max(...flows);
-        const rangeF = Math.max(0.5, maxF - minF);
-        const padF = Math.max(0.3, Number((rangeF * 0.45).toFixed(1)));
-        this.flowChart.options.scales.y.min = Math.max(0, Number((minF - padF).toFixed(1)));
-        this.flowChart.options.scales.y.max = Number((maxF + padF).toFixed(1));
+        const maxF = Math.max(...flows, targetPrescribed);
+        this.flowChart.options.scales.y.min = 0;
+        this.flowChart.options.scales.y.max = Math.max(4.0, Math.ceil(maxF + 0.8));
       }
 
       this.flowChart.update('none');
+    }
+
+    if (this.reserveChart) {
+      this.reserveChart.data.labels = labels;
+      this.reserveChart.data.datasets[0].data = remainings;
+      this.reserveChart.options.scales.y.min = 0;
+      this.reserveChart.options.scales.y.max = 100;
+      this.reserveChart.update('none');
+    }
+
+    if (this.eteChart) {
+      this.eteChart.data.labels = labels;
+      this.eteChart.data.datasets[0].data = etes;
+
+      if (etes.length) {
+        const maxE = Math.max(...etes);
+        this.eteChart.options.scales.y.min = 0;
+        this.eteChart.options.scales.y.max = Math.max(60, Math.ceil((maxE * 1.18) / 30) * 30);
+      }
+
+      this.eteChart.update('none');
     }
 
     if (this.liveFullChart) {
@@ -344,7 +515,7 @@ const OxyCharts = {
     const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(148, 163, 184, 0.15)';
     const textColor = isDark ? '#cbd5e1' : '#64748b';
 
-    [this.pressureChart, this.flowChart, this.liveFullChart].forEach(chart => {
+    [this.pressureChart, this.flowChart, this.reserveChart, this.eteChart, this.liveFullChart].forEach(chart => {
       if (chart && chart.options && chart.options.scales) {
         if (chart.options.scales.x) {
           if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = gridColor;

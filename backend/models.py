@@ -155,3 +155,57 @@ class Alert(db.Model):
             "is_resolved": self.is_resolved,
             "acknowledged": self.is_resolved
         }
+
+
+class User(db.Model):
+    """
+    User Table:
+    Stores staff, viewer, and admin accounts adhering strictly to institutional domain policies.
+    """
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    full_name = db.Column(db.String(100), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default="VIEWER")  # "MAIN_ADMIN", "ADMIN", "VIEWER"
+    is_main_admin = db.Column(db.Boolean, nullable=False, default=False)
+    is_verified = db.Column(db.Boolean, nullable=False, default=False)
+    status = db.Column(db.String(20), nullable=False, default="ACTIVE")  # "ACTIVE", "SUSPENDED"
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    last_login = db.Column(db.DateTime, nullable=True)
+
+    def to_dict(self):
+        """Converts model to dictionary for API responses."""
+        return {
+            "id": self.id,
+            "email": self.email,
+            "name": self.full_name,
+            "full_name": self.full_name,
+            "role": self.role,
+            "is_main_admin": self.is_main_admin,
+            "is_verified": self.is_verified,
+            "status": self.status,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else "",
+            "last_login": self.last_login.strftime("%Y-%m-%d %H:%M:%S") if self.last_login else "Never"
+        }
+
+
+class EmailOTP(db.Model):
+    """
+    EmailOTP Table:
+    Stores single-use 6-digit OTP verification codes with 10-minute expiry.
+    """
+    __tablename__ = "email_otps"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    email = db.Column(db.String(120), nullable=False, index=True)
+    otp_hash = db.Column(db.String(128), nullable=False)
+    purpose = db.Column(db.String(30), nullable=False, default="REGISTRATION")
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    is_used = db.Column(db.Boolean, nullable=False, default=False)
+
+    def is_valid(self):
+        return not self.is_used and datetime.utcnow() <= self.expires_at and self.attempts < 5

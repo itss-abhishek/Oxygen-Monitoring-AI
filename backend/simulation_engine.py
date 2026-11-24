@@ -16,6 +16,17 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 import requests
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
+
 # ---------------------------------------------------------------------------
 # Default Demonstration Configurations
 # ---------------------------------------------------------------------------
@@ -30,7 +41,7 @@ DEFAULT_CONFIG = {
     "critical_threshold_bar": 20.0,      # ~290 PSI
     "pressure_unit": "PSI",              # "PSI" or "BAR"
     "sensor_status": "DISCONNECTED",     # Default to DISCONNECTED without physical ESP32
-    "simulation_mode": False,            # Default to False: physical ESP32 required!
+    "simulation_mode": False,            # Simulation OFF by default: physical ESP32 required
 }
 
 # ---------------------------------------------------------------------------
@@ -114,20 +125,17 @@ class TelemetryState:
                 ete = self.calculate_ete()
                 self._check_automatic_alerts(status)
 
-                # Realistic clinical respiratory oscillation and micro-variations
-                t_sec = time.time()
-                flow_ripple = (0.09 * math.sin(t_sec * 2.2) + random.uniform(-0.02, 0.02)) if self.current_flow_lpm > 0 else 0.0
-                instant_flow = max(0.1, round(self.current_flow_lpm + flow_ripple, 2)) if self.current_flow_lpm > 0 else 0.0
-                press_jitter = 0.04 * math.sin(t_sec * 1.1) + random.uniform(-0.02, 0.02)
-                instant_p_bar = max(0.0, round(self.current_pressure_bar + press_jitter, 2))
+                # Hardware mode: Use actual flow and pressure from ESP32 sensor without synthetic distortion
+                hw_flow = round(self.current_flow_lpm, 2)
+                hw_p_bar = round(self.current_pressure_bar, 1)
 
                 # Append live point to history
                 self.history.append({
                     "timestamp": now.strftime("%H:%M:%S"),
                     "iso_time": now.isoformat(),
-                    "pressure_bar": round(self.current_pressure_bar, 1),
-                    "pressure_psi": round(instant_p_bar * 14.5038, 0),
-                    "flow_lpm": instant_flow,
+                    "pressure_bar": hw_p_bar,
+                    "pressure_psi": round(hw_p_bar * 14.5038, 0),
+                    "flow_lpm": hw_flow,
                     "remaining_pct": round((self.current_pressure_bar / self.config["max_pressure_bar"]) * 100, 1),
                     "ete_minutes": round(ete["minutes"], 1) if ete["valid"] else 0,
                     "status": status
@@ -297,13 +305,14 @@ class TelemetryState:
         # Seed chart history for this cylinder with realistic dynamic curve
         now = datetime.now()
         self.history = []
-        p = min(200.0, self.current_pressure_bar + 4.2)
+        p = min(200.0, self.current_pressure_bar + 2.5)
         base_flow = self.current_flow_lpm
         for i in range(25, -1, -1):
             ts = now - timedelta(seconds=i * 5)
-            p = max(0.0, p - 0.16)
-            flow_sample = max(0.1, round(base_flow + 0.11 * math.sin(i * 0.75) + random.uniform(-0.03, 0.03), 2)) if base_flow > 0 else 0.0
-            p_sample = max(0.0, round(p + 0.06 * math.cos(i * 0.5), 1))
+            p = max(0.0, p - 0.1)
+            flow_sample = round(base_flow, 2)
+            p_sample = max(0.0, round(p, 1))
+            ete_calc = self._calc_ete_minutes(p_sample, flow_sample, self.config["cylinder_capacity_litres"], self.config["max_pressure_bar"])
             self.history.append({
                 "timestamp": ts.strftime("%H:%M:%S"),
                 "iso_time": ts.isoformat(),
@@ -311,7 +320,7 @@ class TelemetryState:
                 "pressure_psi": round(p_sample * 14.5038, 0),
                 "flow_lpm": flow_sample,
                 "remaining_pct": round((p_sample / self.config["max_pressure_bar"]) * 100, 1),
-                "ete_minutes": round(p_sample * self.config["cylinder_capacity_litres"] / (200.0 * max(0.1, flow_sample)) * 60, 1),
+                "ete_minutes": round(ete_calc, 1) if ete_calc else 0,
                 "status": self.classify_status()["level"]
             })
         self.history[-1]["pressure_bar"] = round(self.current_pressure_bar, 1)
@@ -471,10 +480,10 @@ class TelemetryState:
                 "trend": "decreasing" if (self.is_sensor_connected and self.simulation_scenario in ["NORMAL", "LOW_PRESSURE"]) else "stable"
             },
             "flow": {
-                "value": self.current_flow_lpm if self.is_sensor_connected else 0.0,
+                "value": round(self.current_flow_lpm, 2) if self.is_sensor_connected else 0.0,
                 "unit": "L/min",
                 "prescribed": self.config["prescribed_flow_lpm"],
-                "is_simulated": True
+                "is_simulated": not self.hardware_active
             },
             "ete": ete,
             "status": status,
@@ -486,17 +495,21 @@ class TelemetryState:
 # AI Recommendation Generator (Rule-Based + Optional Groq API)
 # ---------------------------------------------------------------------------
 
-def generate_ai_insights(state: TelemetryState) -> Dict[str, Any]:
+def generate_ai_insights(
+    state: TelemetryState,
+    inventory_summary: Optional[Dict[str, Any]] = None,
+    active_alerts: Optional[List[Dict[str, Any]]] = None
+) -> Dict[str, Any]:
     """
-    Generates intelligent operational recommendations.
-    Uses Groq API if GROQ_API_KEY is configured in environment.
+    Generates intelligent operational recommendations for oxygen cylinder inventory.
+    Uses official Groq Python SDK if GROQ_API_KEY is configured in environment.
     Gracefully falls back to structured rule-based healthcare logic otherwise.
+    Strictly enforces non-clinical operational assistance (no medical prescription changes).
     """
-    groq_api_key = os.environ.get("GROQ_API_KEY", "").strip()
     status_info = state.classify_status()
     ete_info = state.calculate_ete()
 
-    # Base rule-driven analysis
+    # Deterministic rule-driven condition and action analysis
     conditions = []
     actions = []
     triggers = []
@@ -521,49 +534,90 @@ def generate_ai_insights(state: TelemetryState) -> Dict[str, Any]:
             actions.append("Request authorized respiratory care staff to verify regulator valve calibration.")
             triggers.append("Rule F-03: Flow rate discrepancy > 0.6 L/min from prescribed target.")
 
+    # Incorporate inventory warnings if present
+    if inventory_summary and inventory_summary.get("critical_count", 0) > 0:
+        crit_list = ", ".join(inventory_summary.get("critical_cylinders", []))
+        conditions.append(f"Hospital fleet reserve alert: {inventory_summary['critical_count']} cylinder(s) at critical depletion ({crit_list}).")
+        actions.append("Dispatch central oxygen replenishment orderly to stage backup cylinders.")
+        triggers.append("Rule INV-01: Fleet inventory critical reserve threshold reached.")
+
     if not conditions:
         conditions.append("Nominal cylinder operation: Pressure and flow within normal parameters.")
         actions.append("Continue routine scheduled monitoring. No logistical intervention needed.")
         triggers.append("Rule N-00: Telemetry steady within green envelope.")
 
-    # Try Groq LLM if key is provided
+    # Try Groq LLM via official SDK if key is provided and valid
     llm_output = None
     engine_used = "Rule-Based Expert Engine (Offline Deterministic)"
 
-    if groq_api_key:
-        try:
-            prompt = f"""
-You are OxySense Clinical Logistics AI, an operational assistance system for hospital oxygen supplies.
-Current Telemetry:
-- Cylinder: {state.config['cylinder_id']} ({state.config['ward']})
-- Pressure: {state.current_pressure_bar:.1f} bar ({state.current_pressure_bar*14.5038:.0f} PSI)
-- Flow: {state.current_flow_lpm:.1f} L/min (Prescribed: {state.config['prescribed_flow_lpm']:.1f} L/min)
-- Sensor Status: {'Online' if state.is_sensor_connected else 'Disconnected'}
-- ETE: {ete_info['display']}
+    # Dynamically refresh .env so newly added keys are picked up immediately
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(override=False)
+    except Exception:
+        pass
 
-Provide a 2-sentence operational logistics summary for hospital staff.
-Safety Rules:
-- DO NOT prescribe oxygen or alter medical prescriptions.
-- Direct all medical adjustments to certified clinical staff.
-- Focus strictly on cylinder logistics, replacement timing, and equipment safety.
-"""
-            headers = {
-                "Authorization": f"Bearer {groq_api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": "llama-3.3-70b-versatile",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.2,
-                "max_tokens": 150
-            }
-            resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=4)
-            if resp.status_code == 200:
-                data = resp.json()
-                llm_output = data["choices"][0]["message"]["content"].strip()
-                engine_used = "Groq Llama-3.3-70B Cloud Model"
-        except Exception:
-            # Fallback smoothly if network or Groq fails
+    groq_api_key = os.environ.get("GROQ_API_KEY", "").strip()
+    model_name = os.environ.get("GROQ_MODEL", "qwen/qwen3.8-27b").strip()
+    is_key_configured = bool(groq_api_key and not groq_api_key.startswith("gsk_your_") and len(groq_api_key) > 10)
+    diagnostic_status = "NOT_CONFIGURED" if not is_key_configured else "PENDING"
+    latency_ms = None
+
+    if Groq and is_key_configured:
+        start_ts = time.time()
+        try:
+            client = Groq(api_key=groq_api_key, timeout=5.0)
+
+            context_lines = [
+                f"- Monitored Cylinder: {state.config['cylinder_id']} ({state.config.get('ward', 'ICU')})",
+                f"- Pressure: {state.current_pressure_bar:.1f} bar ({state.current_pressure_bar * 14.5038:.0f} PSI)",
+                f"- Flow Rate: {state.current_flow_lpm:.1f} L/min (Prescribed: {state.config['prescribed_flow_lpm']:.1f} L/min)",
+                f"- Calculated Supply ETE: {ete_info['display']}",
+                f"- Status Level: {status_info['level']}",
+                f"- Sensor Link: {'Online' if state.is_sensor_connected else 'Disconnected'}"
+            ]
+            if inventory_summary:
+                context_lines.append(f"- Fleet Total: {inventory_summary.get('total_cylinders', 6)} cylinders | {inventory_summary.get('normal_count', 0)} Nominal | {inventory_summary.get('warning_count', 0)} Low | {inventory_summary.get('critical_count', 0)} Critical")
+                if inventory_summary.get("critical_cylinders"):
+                    context_lines.append(f"- Critical Cylinders in Wards: {', '.join(inventory_summary['critical_cylinders'])}")
+            if active_alerts:
+                alert_text = "; ".join([a.get("message", "") for a in active_alerts[:3] if a.get("message")])
+                if alert_text:
+                    context_lines.append(f"- Active Fleet Alerts: {alert_text}")
+
+            system_instruction = (
+                "You are OxySense Clinical Logistics & Inventory AI, an operational assistance system for hospital oxygen supplies. "
+                "Provide a concise 2-sentence operational logistics and inventory summary for hospital orderly and nursing staff. "
+                "SAFETY CONSTRAINTS: DO NOT prescribe oxygen or alter medical prescriptions. "
+                "DO NOT recommend changing prescribed oxygen flow rates or dosages. "
+                "Focus strictly on cylinder logistics, replacement timing, inventory readiness, and equipment safety. "
+                "Clearly frame your output as operational assistance only."
+            )
+
+            user_prompt = "Current Hospital Oxygen Telemetry & Inventory Context:\n" + "\n".join(context_lines)
+
+            completion = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.2,
+                max_tokens=180
+            )
+
+            latency_ms = int((time.time() - start_ts) * 1000)
+
+            if completion.choices and completion.choices[0].message and completion.choices[0].message.content:
+                llm_output = completion.choices[0].message.content.strip()
+                engine_used = f"Groq Cloud LLM ({model_name})"
+                diagnostic_status = "SUCCESS"
+                print(f"[OxySense AI] Live Groq API request succeeded with model '{model_name}' ({latency_ms}ms).", flush=True)
+        except Exception as groq_err:
+            latency_ms = int((time.time() - start_ts) * 1000)
+            clean_err = str(groq_err).split("api_key")[0].strip()[:80]
+            diagnostic_status = f"ERROR: {type(groq_err).__name__} ({clean_err})"
+            print(f"[OxySense AI] Groq API call failed: {type(groq_err).__name__}. Falling back to deterministic rules.", flush=True)
             llm_output = None
 
     summary = llm_output or (
@@ -580,7 +634,13 @@ Safety Rules:
         "detected_conditions": conditions,
         "operational_suggestions": actions,
         "trigger_rules": triggers,
-        "safety_disclaimer": "⚠️ AI recommendations provide operational logistics support only. Clinical oxygen adjustments must only be authorized by licensed healthcare practitioners."
+        "safety_disclaimer": "⚠️ Non-Clinical Operational Assistance Only: OxySense AI provides logistical and inventory guidance. It does NOT generate patient-specific treatment instructions or authorize changing prescribed oxygen flow rates. Clinical adjustments must be performed solely by licensed medical professionals.",
+        "diagnostic": {
+            "groq_configured": is_key_configured,
+            "model": model_name,
+            "status": diagnostic_status,
+            "latency_ms": latency_ms
+        }
     }
 
 # Global singleton simulation instance

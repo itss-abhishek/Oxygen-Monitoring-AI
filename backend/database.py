@@ -5,12 +5,16 @@ IoT-Enabled Smart Oxygen Cylinder Monitoring System with AI-Driven Healthcare Re
 
 import os
 import time
+import tempfile
 from datetime import datetime, timedelta
-from backend.models import db, Cylinder, Telemetry, Alert
+from backend.models import db, Cylinder, Telemetry, Alert, User, EmailOTP
 
 # Base project path where oxygen_monitoring.db resides
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DB_PATH = os.path.join(BASE_DIR, "oxygen_monitoring.db")
+if os.environ.get("VERCEL"):
+    DB_PATH = os.path.join(tempfile.gettempdir(), "oxygen_monitoring.db")
+else:
+    DB_PATH = os.path.join(BASE_DIR, "oxygen_monitoring.db")
 
 # 6 Sample Cylinders with clearly designated simulated healthcare demo data
 SAMPLE_CYLINDERS = [
@@ -85,10 +89,16 @@ SAMPLE_CYLINDERS = [
 
 def init_db(app):
     """
-    Safely initializes SQLite database and creates missing tables
+    Safely initializes SQLite or PostgreSQL (Supabase) database and creates missing tables
     without dropping or modifying any existing user records.
     """
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url:
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
+        app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    else:
+        app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     if "sqlalchemy" not in app.extensions:
@@ -100,6 +110,12 @@ def init_db(app):
         db.create_all()
         seed_initial_cylinders()
         prune_telemetry_older_than(hours=24, force=True)
+        try:
+            from backend.bootstrap_admin import bootstrap_main_admin
+            if not User.query.filter_by(is_main_admin=True).first():
+                bootstrap_main_admin("admin@iilm.edu", "Main Administrator", "Admin@IILM2026")
+        except Exception:
+            pass
 
 
 _last_prune_ts = 0.0

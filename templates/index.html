@@ -266,7 +266,7 @@
       <div class="home-section-header">
         <span class="section-tag">LIVE DEMONSTRATION</span>
         <h2>Complete Multi-Cylinder Dashboard</h2>
-        <p>Accessible upon signing in with student/faculty demo credentials.</p>
+        <p>Accessible upon signing in with institutional @iilm.edu credentials.</p>
       </div>
       <div class="home-preview-wrapper">
         <div class="preview-banner">
@@ -370,12 +370,18 @@
           <span id="login-error-text">Invalid email or password</span>
         </div>
 
+        <!-- Auth Mode Toggle Tabs -->
+        <div class="auth-tabs" style="display: flex; gap: 8px; margin: 12px 0 18px 0; background: rgba(15, 23, 42, 0.5); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+          <button type="button" class="btn-pill active" id="tab-btn-signin" style="flex: 1; text-align: center; justify-content: center;">Sign In</button>
+          <button type="button" class="btn-pill" id="tab-btn-register" style="flex: 1; text-align: center; justify-content: center;">Self-Register (@iilm.edu)</button>
+        </div>
+
         <form id="form-login" class="login-form">
           <div class="form-group">
-            <label for="input-login-email">Email or Username</label>
+            <label for="input-login-email">Institutional Email (@iilm.edu)</label>
             <div class="input-icon-wrap">
               <i data-lucide="mail" class="input-icon"></i>
-              <input type="text" id="input-login-email" class="form-control" placeholder="doctor@oxysense.med" required autocomplete="username">
+              <input type="text" id="input-login-email" class="form-control" placeholder="username@iilm.edu" required autocomplete="username">
             </div>
           </div>
 
@@ -396,31 +402,62 @@
           </button>
         </form>
 
-        <!-- Demo Accounts Box -->
-        <div class="demo-creds-container">
-          <span class="demo-creds-title">💡 1-CLICK DEMO ACCOUNTS</span>
-          <div class="demo-creds-grid">
-            <button type="button" class="cred-card-btn" data-email="doctor@oxysense.med" data-pwd="doctor123">
-              <strong>Dr. Sharma</strong>
-              <span>doctor@oxysense.med</span>
-              <small>ICU Incharge · doctor123</small>
-            </button>
-            <button type="button" class="cred-card-btn" data-email="admin@oxysense.med" data-pwd="admin123">
-              <strong>Administrator</strong>
-              <span>admin@oxysense.med</span>
-              <small>Biomedical Admin · admin123</small>
-            </button>
-            <button type="button" class="cred-card-btn" data-email="nurse@oxysense.med" data-pwd="nurse123">
-              <strong>Nurse Priya</strong>
-              <span>nurse@oxysense.med</span>
-              <small>Respiratory Care · nurse123</small>
+        <!-- SELF REGISTRATION FORM (@iilm.edu) -->
+        <form id="form-register" class="login-form" style="display: none;">
+          <div id="register-step-1">
+            <div class="form-group">
+              <label for="input-reg-name">Full Name</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="user" class="input-icon"></i>
+                <input type="text" id="input-reg-name" class="form-control" placeholder="Dr. / Staff Full Name" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="input-reg-email">Institutional Email <span style="color: var(--teal-primary); font-size: 0.75rem;">(Must end with @iilm.edu)</span></label>
+              <div class="input-icon-wrap">
+                <i data-lucide="mail" class="input-icon"></i>
+                <input type="email" id="input-reg-email" class="form-control" placeholder="username@iilm.edu" required>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-primary btn-block" id="btn-send-otp">
+              <span id="send-otp-btn-text">Send 6-Digit OTP</span>
+              <span class="spinner-sm" id="send-otp-spinner" style="display:none;"></span>
             </button>
           </div>
-        </div>
 
-        <div class="login-footer-disclaimer">
-          <span>⚠️ Demonstration authentication layer for university project evaluation.</span>
-        </div>
+          <div id="register-step-2" style="display: none;">
+            <div class="alert-box alert-info" style="margin-bottom: 14px; font-size: 0.8rem; padding: 10px; border-radius: 6px; background: rgba(13, 148, 136, 0.15); border: 1px solid rgba(13, 148, 136, 0.3); color: #2dd4bf;">
+              <i data-lucide="info" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i>
+              <span id="reg-step2-banner-text">Verification OTP dispatched. Code expires in 10 minutes.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="input-reg-otp">6-Digit Verification Code (OTP)</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="key" class="input-icon"></i>
+                <input type="text" id="input-reg-otp" class="form-control" placeholder="123456" maxlength="6">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="input-reg-password">Create Password <span style="font-size: 0.75rem; color: var(--text-muted);">(min 8 chars)</span></label>
+              <div class="input-icon-wrap">
+                <i data-lucide="lock" class="input-icon"></i>
+                <input type="password" id="input-reg-password" class="form-control" placeholder="••••••••" minlength="8">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-secondary" id="btn-back-to-step1" style="flex: 1;">Back</button>
+              <button type="submit" class="btn btn-primary" id="btn-verify-submit" style="flex: 2;">
+                <span id="verify-btn-text">Verify &amp; Register</span>
+                <span class="spinner-sm" id="verify-spinner" style="display:none;"></span>
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -489,6 +526,11 @@
         <button class="nav-item" data-view="view-settings">
           <i data-lucide="settings"></i>
           <span>System Settings</span>
+        </button>
+        <button class="nav-item" data-view="view-users" id="nav-item-users" style="display: none;">
+          <i data-lucide="users"></i>
+          <span>User Management</span>
+          <span class="badge-tag-ai" style="font-size: 0.65rem; padding: 2px 6px;">Admin</span>
         </button>
       </nav>
 
@@ -851,6 +893,53 @@
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- VIEW: USER MANAGEMENT (ADMIN ONLY) -->
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <main class="page-view" id="view-users" style="display: none;">
+        <div class="view-header-bar">
+          <div>
+            <h2>Institutional User Management</h2>
+            <p class="text-muted">Manage @iilm.edu verified personnel, assign administrative roles, and audit access.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-users">
+              <i data-lucide="refresh-cw"></i> <span>Refresh Directory</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div class="card-title-group">
+              <h3>Registered Personnel Directory</h3>
+              <span class="card-subtitle">Restricted strictly to institutional domain: <code>@iilm.edu</code></span>
+            </div>
+            <div class="search-wrap" style="max-width: 280px; width: 100%;">
+              <input type="text" id="input-users-search" class="form-control" placeholder="Search by name or email...">
+            </div>
+          </div>
+          <div class="table-container" style="overflow-x: auto; margin-top: 12px;">
+            <table class="data-table" id="table-users" style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr>
+                  <th style="text-align: left; padding: 12px;">Staff Name</th>
+                  <th style="text-align: left; padding: 12px;">Institutional Email</th>
+                  <th style="text-align: left; padding: 12px;">Registration Date</th>
+                  <th style="text-align: center; padding: 12px;">Verification</th>
+                  <th style="text-align: center; padding: 12px;">Assigned Role</th>
+                  <th style="text-align: center; padding: 12px;">Status</th>
+                  <th style="text-align: right; padding: 12px;">Administrative Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-users">
+                <!-- Dynamically populated via JS -->
+              </tbody>
+            </table>
           </div>
         </div>
       </main>

@@ -226,11 +226,14 @@
         <p>Clear separation between physical hardware architecture and software prototype simulation.</p>
       </div>
       <div class="workflow-steps-grid">
-        <div class="workflow-card">
+        <div class="workflow-card clickable-card" id="card-sensors-layer" role="button" tabindex="0" title="Click to view full sensor specifications &amp; datasheets">
           <div class="step-num">01</div>
           <h4>Sensors Layer</h4>
           <span class="badge-status-planned">🔲 Planned Hardware</span>
           <p>MPX5700DP pressure transducer and AWM720P1 mass flow sensor mounted directly on cylinder output valve.</p>
+          <div class="workflow-card-action-hint">
+            <span>Read sensor data <i data-lucide="arrow-right"></i></span>
+          </div>
         </div>
         <div class="workflow-arrow">&rarr;</div>
         <div class="workflow-card">
@@ -340,6 +343,126 @@
     <button id="btn-scroll-top" class="scroll-to-top-btn" title="Back to top" aria-label="Scroll to top">
       <i data-lucide="arrow-up"></i>
     </button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 2.5 SENSORS SPECIFICATIONS PAGE -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div id="screen-sensors" class="app-screen sensors-screen">
+    <header class="sensors-header">
+      <div class="sensors-nav-container">
+        <button class="btn-back-link" id="btn-sensors-back">
+          <i data-lucide="arrow-left"></i> <span>Back to Home</span>
+        </button>
+        <div class="sensors-header-brand">
+          <div class="logo-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon-brand">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+          </div>
+          <span class="sensors-brand-title">OxySense Sensor Architecture</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="sensors-main-container">
+      <div class="sensors-intro-banner">
+        <span class="section-tag">HARDWARE SPECIFICATIONS &amp; DATASHEETS</span>
+        <h1>Telemetry Transducers &amp; Gas Flow Sensors</h1>
+        <p>Comprehensive engineering specifications for the dual-channel medical oxygen collar instrumentation layer.</p>
+      </div>
+
+      <div class="sensors-grid">
+        <!-- Sensor 1: Pressure Transducer -->
+        <div class="sensor-spec-card">
+          <div class="sensor-card-top">
+            <div class="sensor-icon-box cyan">
+              <i data-lucide="gauge"></i>
+            </div>
+            <div>
+              <span class="badge-tag">Pressure Telemetry</span>
+              <h3>NXP MPX5700DP Pressure Transducer</h3>
+            </div>
+          </div>
+          <p class="sensor-desc">Piezoresistive pressure transducer designed for medical gas line tracking with internal temperature compensation and signal amplification.</p>
+          <div class="sensor-specs-table">
+            <div class="spec-row"><span>Measurement Range</span><strong>0 to 700 kPa (0 to 101.5 PSI) / Line Pressure</strong></div>
+            <div class="spec-row"><span>Supply Voltage</span><strong>4.75V to 5.25V DC (5.0V Typ.)</strong></div>
+            <div class="spec-row"><span>Output Signal</span><strong>0.2V to 4.7V Analog (Microcontroller ADC compatible)</strong></div>
+            <div class="spec-row"><span>Full Scale Span</span><strong>4.50 V</strong></div>
+            <div class="spec-row"><span>Sensitivity</span><strong>6.4 mV / kPa</strong></div>
+            <div class="spec-row"><span>Response Time</span><strong>1.0 ms</strong></div>
+            <div class="spec-row"><span>Accuracy</span><strong>&plusmn;2.5% V_FSS (0&deg;C to 85&deg;C)</strong></div>
+          </div>
+        </div>
+
+        <!-- Sensor 2: Mass Airflow / Gas Flow Sensor -->
+        <div class="sensor-spec-card">
+          <div class="sensor-card-top">
+            <div class="sensor-icon-box teal">
+              <i data-lucide="wind"></i>
+            </div>
+            <div>
+              <span class="badge-tag">Flow Telemetry</span>
+              <h3>Honeywell AWM720P1 Mass Airflow Sensor</h3>
+            </div>
+          </div>
+          <p class="sensor-desc">Microbridge mass airflow sensor engineered for medical ventilators, oxygen concentrators, and cylinder gas delivery monitoring with bypass flow architecture.</p>
+          <div class="sensor-specs-table">
+            <div class="spec-row"><span>Flow Range</span><strong>0 to 200 SLPM (Calibrated 0.0 to 15.0 L/min clinical flow)</strong></div>
+            <div class="spec-row"><span>Excitation Voltage</span><strong>8.0V to 15.0V DC (10.0V Typ.)</strong></div>
+            <div class="spec-row"><span>Output Voltage</span><strong>1.00V (Zero Flow) to 5.00V DC (Full Scale)</strong></div>
+            <div class="spec-row"><span>Power Consumption</span><strong>60 mW Typ.</strong></div>
+            <div class="spec-row"><span>Response Time</span><strong>6.0 ms Typ.</strong></div>
+            <div class="spec-row"><span>Gas Compatibility</span><strong>Medical Oxygen (O₂), Nitrogen, Non-corrosive Dry Gas</strong></div>
+            <div class="spec-row"><span>Repeatability</span><strong>&plusmn;0.5% of reading</strong></div>
+          </div>
+        </div>
+
+        <!-- Sensor 3: High-Pressure Bourdon Sensor -->
+        <div class="sensor-spec-card">
+          <div class="sensor-card-top">
+            <div class="sensor-icon-box orange">
+              <i data-lucide="cylinder"></i>
+            </div>
+            <div>
+              <span class="badge-tag">Cylinder High-Pressure</span>
+              <h3>Industrial Piezoresistive Bourdon Transducer</h3>
+            </div>
+          </div>
+          <p class="sensor-desc">Direct cylinder collar transducer mounted on the high-pressure gas stem before primary medical pressure regulator (0 to 250 bar capability).</p>
+          <div class="sensor-specs-table">
+            <div class="spec-row"><span>Maximum Pressure</span><strong>0 to 250 bar (0 to 3625 PSI)</strong></div>
+            <div class="spec-row"><span>Proof Pressure</span><strong>150% Full Scale (375 bar)</strong></div>
+            <div class="spec-row"><span>Burst Pressure</span><strong>300% Full Scale (750 bar)</strong></div>
+            <div class="spec-row"><span>Electrical Interface</span><strong>0.5V to 4.5V Ratiometric / I2C Bus to ESP32 ADC</strong></div>
+            <div class="spec-row"><span>Operating Temp</span><strong>-20&deg;C to +85&deg;C</strong></div>
+            <div class="spec-row"><span>Wetted Materials</span><strong>316L Stainless Steel (Oxygen Cleaned per CGA G-4.1)</strong></div>
+          </div>
+        </div>
+
+        <!-- Sensor 4: ESP32 Hardware Wiring & Pinout Interface -->
+        <div class="sensor-spec-card">
+          <div class="sensor-card-top">
+            <div class="sensor-icon-box green">
+              <i data-lucide="cpu"></i>
+            </div>
+            <div>
+              <span class="badge-tag">Collar Microcontroller</span>
+              <h3>ESP32 Node Telemetry Collar Interface</h3>
+            </div>
+          </div>
+          <p class="sensor-desc">Hardware abstraction mapping connecting physical transducers directly to the ESP32 dual-core Wi-Fi/BLE microcontroller unit.</p>
+          <div class="sensor-specs-table">
+            <div class="spec-row"><span>Pressure ADC Pin</span><strong>GPIO 34 (ADC1_CH6, 12-bit resolution: 0-4095)</strong></div>
+            <div class="spec-row"><span>Flow Rate ADC Pin</span><strong>GPIO 35 (ADC1_CH7, 12-bit resolution: 0-4095)</strong></div>
+            <div class="spec-row"><span>Sampling Frequency</span><strong>100 Hz Hardware Oversampled, 2 Hz Filtered Output</strong></div>
+            <div class="spec-row"><span>Telemetry Protocol</span><strong>JSON over HTTP REST / MQTT QoS 1 Telemetry</strong></div>
+            <div class="spec-row"><span>Isolation &amp; Safety</span><strong>Optocoupled signal conditioning &amp; Zener clamp 3.3V</strong></div>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->

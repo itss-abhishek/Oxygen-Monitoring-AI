@@ -67,6 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const errBanner = document.getElementById('login-error-banner');
       if (errBanner) errBanner.style.display = 'none';
       window.scrollTo(0, 0);
+    } else if (screenId === 'screen-sensors') {
+      stopStreaming();
+      window.scrollTo(0, 0);
     }
 
     if (window.lucide) lucide.createIcons();
@@ -301,6 +304,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   scrollTopBtn?.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // Sensors Layer Specification Card interaction
+  document.getElementById('card-sensors-layer')?.addEventListener('click', () => {
+    showScreen('screen-sensors');
+  });
+
+  document.getElementById('btn-sensors-back')?.addEventListener('click', () => {
+    showScreen('screen-home');
+    const howSec = document.getElementById('home-how');
+    if (howSec) howSec.scrollIntoView({ behavior: 'smooth' });
   });
 
   // ═════════════════════════════════════════════════════════════════════════

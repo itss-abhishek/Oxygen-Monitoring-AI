@@ -2902,6 +2902,63 @@ body {
   text-align: center;
 }
 
+/* Scroll to Top Floating Action Button */
+.scroll-to-top-btn {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--teal-primary, #0d9488);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(16px);
+  transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.scroll-to-top-btn.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.scroll-to-top-btn:hover {
+  background: #0f766e;
+  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.55);
+  transform: translateY(-3px);
+}
+
+.scroll-to-top-btn:active {
+  transform: translateY(0);
+}
+
+.scroll-to-top-btn svg,
+.scroll-to-top-btn i {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.5;
+}
+
+.dark .scroll-to-top-btn {
+  background: #14b8a6;
+  color: #0b1120;
+  box-shadow: 0 4px 14px rgba(20, 184, 166, 0.35);
+}
+
+.dark .scroll-to-top-btn:hover {
+  background: #2dd4bf;
+  box-shadow: 0 6px 20px rgba(45, 212, 191, 0.5);
+}
+
 /* ═════════════════════════════════════════════════════════════════════════
    3. LOGIN PAGE
    ═════════════════════════════════════════════════════════════════════════ */

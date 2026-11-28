@@ -236,6 +236,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Scroll To Top Floating Button
+  const scrollTopBtn = document.getElementById('btn-scroll-top');
+  window.addEventListener('scroll', () => {
+    const homeScreen = document.getElementById('screen-home');
+    if (homeScreen && homeScreen.classList.contains('active')) {
+      if (window.scrollY > 280) {
+        scrollTopBtn?.classList.add('visible');
+      } else {
+        scrollTopBtn?.classList.remove('visible');
+      }
+    } else {
+      scrollTopBtn?.classList.remove('visible');
+    }
+  });
+
+  scrollTopBtn?.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
   // ═════════════════════════════════════════════════════════════════════════
   // 4. LOGIN PAGE & AUTHENTICATION
   // ═════════════════════════════════════════════════════════════════════════

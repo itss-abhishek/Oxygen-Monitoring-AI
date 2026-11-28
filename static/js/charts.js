@@ -26,30 +26,88 @@ const OxyCharts = {
     const canvas = document.getElementById('chart-home-preview');
     if (canvas && !this.homePreviewChart) {
       const ctx2d = canvas.getContext('2d');
-      const grad = this._createGradient(ctx2d, 'rgba(13, 148, 136, 0.35)', 'rgba(13, 148, 136, 0.00)');
+      const gradP = this._createGradient(ctx2d, 'rgba(13, 148, 136, 0.32)', 'rgba(13, 148, 136, 0.00)');
+      const gradF = this._createGradient(ctx2d, 'rgba(2, 132, 199, 0.20)', 'rgba(2, 132, 199, 0.00)');
+
+      // Pre-fill with realistic starting points so both lines render immediately
+      const defaultLabels = ['00:00', '00:02', '00:04', '00:06', '00:08', '00:10', '00:12', '00:14', '00:16', '00:18', '00:20'];
+      const defaultPressures = [2165, 2160, 2155, 2152, 2150, 2148, 2145, 2142, 2140, 2138, 2135];
+      const defaultFlows = [2.0, 2.0, 2.1, 2.0, 1.9, 2.0, 2.0, 2.1, 2.0, 1.9, 2.0];
 
       this.homePreviewChart = new Chart(canvas, {
         type: 'line',
         data: {
-          labels: [],
-          datasets: [{
-            label: 'Cylinder Pressure (PSI)',
-            data: [],
-            borderColor: '#0d9488',
-            backgroundColor: grad,
-            borderWidth: 2.5,
-            tension: 0.38,
-            fill: true,
-            pointRadius: 0
-          }]
+          labels: defaultLabels,
+          datasets: [
+            {
+              label: 'Pressure (PSI)',
+              data: defaultPressures,
+              borderColor: '#0d9488',
+              backgroundColor: gradP,
+              borderWidth: 2.5,
+              tension: 0.38,
+              fill: true,
+              pointRadius: 0,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Flow Rate (L/min)',
+              data: defaultFlows,
+              borderColor: '#0284c7',
+              backgroundColor: gradF,
+              borderWidth: 2.2,
+              borderDash: [4, 3],
+              tension: 0.35,
+              fill: false,
+              pointRadius: 0,
+              yAxisID: 'y1'
+            }
+          ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { enabled: true } },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              align: 'end',
+              labels: {
+                boxWidth: 10,
+                boxHeight: 10,
+                padding: 10,
+                font: { size: 10.5, weight: '600' },
+                color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#64748b'
+              }
+            },
+            tooltip: {
+              enabled: true,
+              callbacks: {
+                label: function(ctx) {
+                  if (ctx.datasetIndex === 0) {
+                    return ` Pressure: ${ctx.parsed.y} PSI`;
+                  }
+                  return ` Flow Rate: ${ctx.parsed.y.toFixed(1)} L/min`;
+                }
+              }
+            }
+          },
           scales: {
             x: { display: false },
-            y: { display: false }
+            y: {
+              display: false,
+              position: 'left'
+            },
+            y1: {
+              display: false,
+              position: 'right',
+              min: 0,
+              max: 6
+            }
           }
         }
       });
@@ -504,8 +562,11 @@ const OxyCharts = {
     }
 
     if (this.homePreviewChart) {
-      this.homePreviewChart.data.labels = labels.slice(-15);
-      this.homePreviewChart.data.datasets[0].data = pressures.slice(-15);
+      this.homePreviewChart.data.labels = labels.slice(-20);
+      this.homePreviewChart.data.datasets[0].data = pressures.slice(-20);
+      if (this.homePreviewChart.data.datasets[1]) {
+        this.homePreviewChart.data.datasets[1].data = flows.slice(-20);
+      }
       this.homePreviewChart.update('none');
     }
   },
@@ -515,7 +576,7 @@ const OxyCharts = {
     const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(148, 163, 184, 0.15)';
     const textColor = isDark ? '#cbd5e1' : '#64748b';
 
-    [this.pressureChart, this.flowChart, this.reserveChart, this.eteChart, this.liveFullChart].forEach(chart => {
+    [this.pressureChart, this.flowChart, this.reserveChart, this.eteChart, this.liveFullChart, this.homePreviewChart].forEach(chart => {
       if (chart && chart.options && chart.options.scales) {
         if (chart.options.scales.x) {
           if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = gridColor;

@@ -62,6 +62,13 @@ class TelemetryState:
         self.history: List[Dict[str, Any]] = []
         self.alerts: List[Dict[str, Any]] = []
         self._init_default_alerts()
+        if os.environ.get("VERCEL"):
+            self.config["simulation_mode"] = True
+            self.is_sensor_connected = True
+            self._init_mock_history()
+            if self.history:
+                self.current_pressure_bar = self.history[-1]["pressure_bar"]
+                self.current_flow_lpm = self.history[-1]["flow_lpm"]
 
     def _init_mock_history(self):
         """Populate 30 minutes of realistic synthetic baseline telemetry."""
@@ -150,8 +157,8 @@ class TelemetryState:
                 self.hardware_active = False
                 return
 
-        # If user explicitly turned on simulation via Demonstration panel
-        if self.config.get("simulation_mode", False):
+        # If user explicitly turned on simulation via Demonstration panel or in Vercel cloud
+        if self.config.get("simulation_mode", False) or os.environ.get("VERCEL"):
             self.is_sensor_connected = True
             if self.simulation_scenario == "LOW_PRESSURE":
                 self.current_pressure_bar = max(0.0, self.current_pressure_bar - random.uniform(3.5, 6.0))

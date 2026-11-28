@@ -53,14 +53,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update screen-specific states
     if (screenId === 'screen-home') {
+      stopStreaming();
       updateHomeAuthState();
       OxyCharts.initHomePreviewChart();
       window.scrollTo(0, 0);
     } else if (screenId === 'screen-dashboard') {
       updateDashboardUserProfile();
       OxyCharts.initOverviewCharts();
+      startStreaming();
       window.scrollTo(0, 0);
     } else if (screenId === 'screen-login') {
+      stopStreaming();
       const errBanner = document.getElementById('login-error-banner');
       if (errBanner) errBanner.style.display = 'none';
       window.scrollTo(0, 0);
@@ -659,14 +662,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await OxyAPI.getLiveStream();
       renderOverviewMetrics(data);
       OxyCharts.updateFromHistory(data.history, currentPrescribedFlow);
-
-      // Also update home page preview card if visible
-      const homeP = document.getElementById('home-preview-p');
-      const homePSub = document.getElementById('home-preview-p-sub');
-      const homeF = document.getElementById('home-preview-f');
-      if (homeP) homeP.innerHTML = `${data.pressure.psi} <small>PSI</small>`;
-      if (homePSub) homePSub.textContent = `${data.pressure.bar} bar · ${data.pressure.percentage}% Capacity`;
-      if (homeF) homeF.innerHTML = `${data.flow.value.toFixed(1)} <small>L/min</small>`;
 
       // Refresh tables if currently visible
       if (currentScreen === 'screen-dashboard') {
@@ -1615,6 +1610,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // INITIAL BOOTSTRAP
   // ═════════════════════════════════════════════════════════════════════════
   initSplashScreen();
-  startStreaming();
   loadAiInsights();
 });

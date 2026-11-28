@@ -560,15 +560,6 @@ const OxyCharts = {
 
       this.liveFullChart.update('none');
     }
-
-    if (this.homePreviewChart) {
-      this.homePreviewChart.data.labels = labels.slice(-20);
-      this.homePreviewChart.data.datasets[0].data = pressures.slice(-20);
-      if (this.homePreviewChart.data.datasets[1]) {
-        this.homePreviewChart.data.datasets[1].data = flows.slice(-20);
-      }
-      this.homePreviewChart.update('none');
-    }
   },
 
   updateTheme(theme) {

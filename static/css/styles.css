@@ -818,8 +818,12 @@ select option,
   color: #0f172a;
 }
 
-.theme-toggle-btn .moon-icon {
+.theme-toggle-btn .sun-icon {
   display: none;
+}
+
+.theme-toggle-btn .moon-icon {
+  display: block;
 }
 
 .dark .theme-toggle-btn {
@@ -833,11 +837,11 @@ select option,
 }
 
 .dark .theme-toggle-btn .sun-icon {
-  display: none;
+  display: block;
 }
 
 .dark .theme-toggle-btn .moon-icon {
-  display: block;
+  display: none;
 }
 
 /* Reset & Basics */
@@ -2373,6 +2377,29 @@ body {
   text-decoration: none;
 }
 
+.home-brand .brand-text h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+}
+
+.home-brand .brand-text span {
+  font-size: 0.72rem;
+  color: var(--teal-primary);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.dark .home-brand .brand-text h2 {
+  color: #f8fafc;
+}
+
+.dark .home-brand .brand-text span {
+  color: #2dd4bf;
+}
+
 .home-nav-links {
   display: flex;
   align-items: center;
@@ -2740,6 +2767,12 @@ body {
   padding: 3px 8px;
   border-radius: 4px;
   margin-bottom: 10px;
+}
+
+.dark .badge-status-live {
+  background: rgba(13, 148, 136, 0.22);
+  color: #2dd4bf;
+  border: 1px solid rgba(45, 212, 191, 0.4);
 }
 
 .workflow-card p {

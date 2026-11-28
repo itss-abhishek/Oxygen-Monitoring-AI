@@ -135,9 +135,15 @@
   color: #f8fafc;
 }
 
-.dark .home-screen,
-.dark .home-navbar {
+.dark .home-screen {
   background-color: #0b1120;
+  color: #f8fafc;
+}
+
+.dark .home-navbar {
+  background: rgba(11, 17, 32, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom-color: #1e293b;
   color: #f8fafc;
 }
@@ -866,8 +872,9 @@ select option,
 }
 
 html, body {
-  overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
+  scroll-padding-top: 80px;
 }
 
 body {
@@ -2347,16 +2354,21 @@ body {
   background-color: #ffffff;
   color: var(--text-main);
   scroll-behavior: smooth;
+  padding-top: 72px;
 }
 
-/* Sticky Home Navbar */
+/* Fixed Home Navbar (Always Visible on Scroll) */
 .home-navbar {
-  position: sticky;
+  position: fixed;
   top: 0;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-light);
-  z-index: 100;
+  z-index: 1000;
   height: 72px;
 }
 

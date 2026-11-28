@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showScreen('screen-login');
   });
 
-  // Smooth scroll for Home nav links
+  // Smooth scroll for Home nav links with sticky header offset
   document.querySelectorAll('.home-nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
       const targetId = link.getAttribute('href');
@@ -229,14 +229,58 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           const section = document.querySelector(targetId);
           if (section) {
-            section.scrollIntoView({ behavior: 'smooth' });
+            const navHeight = 72;
+            const topPos = section.getBoundingClientRect().top + window.pageYOffset - navHeight;
+            window.scrollTo({ top: topPos, behavior: 'smooth' });
           }
         }
       }
     });
   });
 
-  // Scroll To Top Floating Button
+  // ScrollSpy: dynamically highlight navbar link matching current section in view
+  const navSpyTargets = [
+    { id: 'screen-home', link: document.querySelector('.home-nav-link[href="#screen-home"]') },
+    { id: 'home-features', link: document.querySelector('.home-nav-link[href="#home-features"]') },
+    { id: 'home-how', link: document.querySelector('.home-nav-link[href="#home-how"]') },
+    { id: 'home-preview', link: document.querySelector('.home-nav-link[href="#home-preview"]') },
+    { id: 'home-about', link: document.querySelector('.home-nav-link[href="#home-about"]') }
+  ];
+
+  function updateScrollSpy() {
+    const homeScreen = document.getElementById('screen-home');
+    if (!homeScreen || !homeScreen.classList.contains('active')) return;
+
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    const navOffset = 140;
+    let activeId = 'screen-home';
+
+    if ((window.innerHeight + scrollY) >= (document.body.offsetHeight - 80)) {
+      activeId = 'home-about';
+    } else {
+      navSpyTargets.forEach(({ id }) => {
+        const el = document.getElementById(id);
+        if (el) {
+          const top = el.offsetTop - navOffset;
+          if (scrollY >= top) {
+            activeId = id;
+          }
+        }
+      });
+    }
+
+    navSpyTargets.forEach(({ id, link }) => {
+      if (link) {
+        if (id === activeId) {
+          link.classList.add('active');
+        } else {
+          link.classList.remove('active');
+        }
+      }
+    });
+  }
+
+  // Scroll To Top Floating Button & ScrollSpy listener
   const scrollTopBtn = document.getElementById('btn-scroll-top');
   window.addEventListener('scroll', () => {
     const homeScreen = document.getElementById('screen-home');
@@ -246,10 +290,11 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         scrollTopBtn?.classList.remove('visible');
       }
+      updateScrollSpy();
     } else {
       scrollTopBtn?.classList.remove('visible');
     }
-  });
+  }, { passive: true });
 
   scrollTopBtn?.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
